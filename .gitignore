@@ -18,6 +18,10 @@ yarn-error.log*
 
 # env files
 .env*
+ent
+__pycache__
+logs
+dahua_videos
 
 # vercel
 .vercel
