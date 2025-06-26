@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Admin FTP{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tachometer-alt"></i> Dashboard del Servidor FTP</h1>
+        <div class="server-status status-{{ stats.status }}">
+            <i class="fas fa-circle"></i>
+            <span>{{ 'En línea' if stats.status == 'online' else 'Fuera de línea' }}</span>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-video"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ stats.video_count }}</h3>
+                <p>Videos Almacenados</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-hdd"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ stats.total_size_gb }} GB</h3>
+                <p>Espacio Utilizado</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ stats.disk_usage }}%</h3>
+                <p>Uso del Disco</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ stats.last_upload }}</h3>
+                <p>Última Subida</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-content">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-video"></i> Videos Recientes</h3>
+            </div>
+            <div class="card-body">
+                {% if recent_videos %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Archivo</th>
+                                    <th>Tamaño</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for video in recent_videos %}
+                                <tr>
+                                    <td>{{ video.datetime[:19] }}</td>
+                                    <td>{{ video.path.split('/')[-1] }}</td>
+                                    <td>{{ "%.2f"|format(video.size / (1024*1024)) }} MB</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="no-data">No hay videos registrados</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Actualizar estadísticas cada 30 segundos
+setInterval(function() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Actualizar elementos del DOM con nuevas estadísticas
+            document.querySelector('.server-status').className = `server-status status-${data.status}`;
+            document.querySelector('.server-status span').textContent = data.status === 'online' ? 'En línea' : 'Fuera de línea';
+        })
+        .catch(error => console.error('Error:', error));
+}, 30000);
+</script>
+{% endblock %}

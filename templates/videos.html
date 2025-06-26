@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Videos - Admin FTP{% endblock %}
+
+{% block content %}
+<div class="videos-page">
+    <div class="page-header">
+        <h1><i class="fas fa-video"></i> Gestión de Videos</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Lista de Videos</h3>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar videos..." onkeyup="filterVideos()">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if videos %}
+                <div class="table-responsive">
+                    <table class="table" id="videosTable">
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>Archivo</th>
+                                <th>Ruta</th>
+                                <th>Tamaño</th>
+                                <th>Descargar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for video in videos %}
+                            <tr>
+                                <td>{{ video.datetime[:19] }}</td>
+                                <td>{{ video.path.split('/')[-1] }}</td>
+                                <td>{{ video.path }}</td>
+                                <td>{{ "%.2f"|format(video.size / (1024*1024)) }} MB</td>
+                                <td>
+                                    <a class="btn btn-primary" href="{{ url_for('download_video', filename=video.path) }}">
+                                        <i class="fas fa-download"></i> Descargar
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="no-data">No hay videos registrados en la base de datos</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function filterVideos() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('videosTable');
+    const rows = table.getElementsByTagName('tr');
+
+    for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        let found = false;
+        
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j].textContent.toLowerCase().indexOf(filter) > -1) {
+                found = true;
+                break;
+            }
+        }
+        
+        rows[i].style.display = found ? '' : 'none';
+    }
+}
+</script>
+{% endblock %}

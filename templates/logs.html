@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - Admin FTP{% endblock %}
+
+{% block content %}
+<div class="logs-page">
+    <div class="page-header">
+        <h1><i class="fas fa-file-alt"></i> Logs del Servidor</h1>
+        <button onclick="refreshLogs()" class="btn btn-secondary">
+            <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Logs Recientes</h3>
+            <div class="log-controls">
+                <select id="logLevel" onchange="filterLogs()">
+                    <option value="">Todos los niveles</option>
+                    <option value="INFO">INFO</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="ERROR">ERROR</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="log-container" id="logContainer">
+                {% if logs %}
+                    {% for log in logs %}
+                        <div class="log-entry {{ 'error' if 'ERROR' in log else 'warning' if 'WARNING' in log else 'info' }}">
+                            {{ log.strip() }}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-data">No hay logs disponibles</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshLogs() {
+    fetch('/api/logs?lines=200')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = '';
+            
+            data.logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = `log-entry ${log.includes('ERROR') ? 'error' : log.includes('WARNING') ? 'warning' : 'info'}`;
+                div.textContent = log.trim();
+                container.appendChild(div);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function filterLogs() {
+    const level = document.getElementById('logLevel').value;
+    const entries = document.querySelectorAll('.log-entry');
+    
+    entries.forEach(entry => {
+        if (!level || entry.textContent.includes(level)) {
+            entry.style.display = 'block';
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+}
+
+// Auto-refresh logs every 30 seconds
+setInterval(refreshLogs, 30000);
+</script>
+{% endblock %}
