@@ -6,6 +6,7 @@ Aplicación Flask separada del servidor FTP
 
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
 from flask import send_from_directory
+from pathlib import PurePosixPath
 import os
 import json
 import time
@@ -86,9 +87,13 @@ def get_recent_logs(lines=100):
     try:
         log_file = LOG_DIR / 'ftp_server.log'
         if log_file.exists():
-            with open(log_file, 'r', encoding='utf-8') as f:
-                all_lines = f.readlines()
-                return all_lines[-lines:] if len(all_lines) > lines else all_lines
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    all_lines = f.readlines()
+            except UnicodeDecodeError:
+                with open(log_file, 'r', encoding='latin1') as f:
+                    all_lines = f.readlines()
+            return all_lines[-lines:] if len(all_lines) > lines else all_lines
         return []
     except Exception as e:
         print(f"Error leyendo logs: {e}")
@@ -105,7 +110,7 @@ def get_video_database():
                     parts = line.strip().split(',')
                     if len(parts) >= 3:
                         # Convertir a ruta relativa si es absoluta
-                        rel_path = os.path.relpath(parts[1], VIDEO_DIR)
+                        rel_path = PurePosixPath(f.relative_to(VIDEO_DIR))
                         videos.append({
                             'datetime': parts[0],
                             'path': rel_path,
