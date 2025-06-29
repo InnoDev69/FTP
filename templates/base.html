@@ -37,6 +37,16 @@
         {% endwith %}
 
         {% block content %}{% endblock %}
+
+        {% if update_available %}
+        <div style="position:fixed;top:10px;right:10px;z-index:9999;">
+            <form method="post" action="{{ url_for('update') }}">
+                <button class="btn btn-secondary" type="submit">
+                    <i class="fas fa-sync-alt"></i> ¡Actualización disponible! Actualizar ahora
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </main>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

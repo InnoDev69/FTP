@@ -1879,3 +1879,22 @@
 2025-06-27 21:13:59,534 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.02 GB
 2025-06-27 21:14:02,555 - pyftpdlib - INFO - received interrupt signal
 2025-06-27 21:14:02,555 - pyftpdlib - INFO - >>> shutting down FTP server, 1 socket(s), pid=106781 <<<
+2025-06-29 00:10:00,369 - DahuaFTPServer - INFO - Servidor FTP configurado en 0.0.0.0:60000
+2025-06-29 00:10:00,370 - DahuaFTPServer - INFO - Iniciando servidor FTP para DVR Dahua...
+2025-06-29 00:10:00,370 - DahuaFTPServer - INFO - Directorio de videos: /home/thiago/Escritorio/Code/FTP/dahua_videos
+2025-06-29 00:10:00,370 - DahuaFTPServer - INFO - Usuario: admin, Contraseña: diema2051
+2025-06-29 00:10:00,370 - DahuaFTPServer - INFO - Días de retención de archivos: 7
+2025-06-29 00:10:00,370 - pyftpdlib - INFO - concurrency model: async
+2025-06-29 00:10:00,370 - pyftpdlib - INFO - masquerade (NAT) address: None
+2025-06-29 00:10:00,370 - pyftpdlib - INFO - passive ports: 60000->65534
+2025-06-29 00:10:00,370 - pyftpdlib - INFO - >>> starting FTP server on 0.0.0.0:60000, pid=130770 <<<
+2025-06-29 00:10:00,370 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.02 GB
+2025-06-29 00:10:08,374 - pyftpdlib - INFO - 127.0.0.1:40108-[] FTP session opened (connect)
+2025-06-29 00:10:11,377 - pyftpdlib - INFO - 127.0.0.1:40108-[] USER 'server' failed login.
+2025-06-29 00:10:11,938 - pyftpdlib - INFO - 127.0.0.1:40108-[] FTP session closed (disconnect).
+2025-06-29 00:10:20,578 - pyftpdlib - INFO - 127.0.0.1:36968-[] FTP session opened (connect)
+2025-06-29 00:10:20,578 - pyftpdlib - INFO - 127.0.0.1:36968-[admin] USER 'admin' logged in.
+2025-06-29 00:10:20,578 - pyftpdlib - INFO - 127.0.0.1:36968-[admin] FTP session closed (disconnect).
+2025-06-29 00:10:20,590 - pyftpdlib - INFO - 127.0.0.1:36980-[] FTP session opened (connect)
+2025-06-29 00:10:20,590 - pyftpdlib - INFO - 127.0.0.1:36980-[admin] USER 'admin' logged in.
+2025-06-29 00:10:20,591 - pyftpdlib - INFO - 127.0.0.1:36980-[admin] FTP session closed (disconnect).

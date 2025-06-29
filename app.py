@@ -15,6 +15,8 @@ from pathlib import Path
 import psutil
 import ftplib
 from functools import wraps
+import subprocess
+import threading
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'  # Cambiar en producción
@@ -203,6 +205,41 @@ def api_logs():
     """API para obtener logs recientes"""
     lines = request.args.get('lines', 50, type=int)
     return jsonify({'logs': get_recent_logs(lines)})
+
+def check_git_update():
+    """Verifica si hay actualizaciones en el repositorio git"""
+    try:
+        # Buscar cambios remotos
+        subprocess.run(['git', 'fetch'], check=True)
+        local = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
+        remote = subprocess.check_output(['git', 'rev-parse', '@{u}']).strip()
+        return local != remote
+    except Exception as e:
+        print(f"Error comprobando actualizaciones git: {e}")
+        return False
+
+def do_git_pull_and_restart():
+    """Ejecuta git pull y reinicia el servidor Flask"""
+    try:
+        subprocess.run(['git', 'pull'], check=True)
+        # Reiniciar el servidor Flask (solo funciona si se ejecuta con flask run o similar)
+        os._exit(3)  # Código especial para reinicio supervisado (gunicorn, systemd, etc)
+    except Exception as e:
+        print(f"Error actualizando el proyecto: {e}")
+
+@app.context_processor
+def inject_update_flag():
+    """Inyecta la variable update_available en todas las plantillas"""
+    update_available = check_git_update()
+    return dict(update_available=update_available)
+
+@app.route('/update', methods=['POST'])
+@login_required
+def update():
+    """Endpoint para actualizar el proyecto"""
+    threading.Thread(target=do_git_pull_and_restart).start()
+    flash('Actualizando proyecto... El servidor se reiniciará.', 'info')
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     # Crear directorios necesarios
