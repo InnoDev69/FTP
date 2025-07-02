@@ -27282,3 +27282,355 @@
 2025-07-02 18:00:00,901 - DahuaFTPServer - INFO - Estadísticas: 0 archivos, 0.00 GB
 2025-07-02 18:05:00,901 - DahuaFTPServer - INFO - Estadísticas: 0 archivos, 0.00 GB
 2025-07-02 18:10:00,902 - DahuaFTPServer - INFO - Estadísticas: 0 archivos, 0.00 GB
+2025-07-02 20:06:48,348 - DahuaFTPServer - INFO - Servidor FTP configurado en 0.0.0.0:60000
+2025-07-02 20:06:48,350 - DahuaFTPServer - INFO - Seguridad: máximo 3 intentos, bloqueo por 300s
+2025-07-02 20:06:48,350 - DahuaFTPServer - INFO - Iniciando servidor FTP para DVR Dahua...
+2025-07-02 20:06:48,350 - DahuaFTPServer - INFO - Directorio de videos: /home/thiago/Escritorio/Code/FTP/dahua_videos
+2025-07-02 20:06:48,350 - DahuaFTPServer - INFO - Usuario: admin, Contraseña: diema2051
+2025-07-02 20:06:48,350 - DahuaFTPServer - INFO - Días de retención de archivos: 7
+2025-07-02 20:06:48,350 - pyftpdlib - INFO - concurrency model: async
+2025-07-02 20:06:48,350 - pyftpdlib - INFO - masquerade (NAT) address: None
+2025-07-02 20:06:48,350 - pyftpdlib - INFO - passive ports: 60000->65534
+2025-07-02 20:06:48,350 - pyftpdlib - INFO - >>> starting FTP server on 0.0.0.0:60000, pid=488857 <<<
+2025-07-02 20:06:48,351 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:07:02,324 - pyftpdlib - INFO - 127.0.0.1:51770-[] FTP session opened (connect)
+2025-07-02 20:07:02,324 - SecurityManager - WARNING - Intento fallido desde 127.0.0.1. Intentos restantes: 2
+2025-07-02 20:07:05,327 - pyftpdlib - INFO - 127.0.0.1:51770-[] USER 'a' failed login.
+2025-07-02 20:07:05,884 - pyftpdlib - INFO - 127.0.0.1:51770-[] FTP session closed (disconnect).
+2025-07-02 20:07:14,111 - pyftpdlib - INFO - 127.0.0.1:47500-[] FTP session opened (connect)
+2025-07-02 20:07:14,111 - SecurityManager - WARNING - Intento fallido desde 127.0.0.1. Intentos restantes: 1
+2025-07-02 20:07:17,114 - pyftpdlib - INFO - 127.0.0.1:47500-[] USER 'a' failed login.
+2025-07-02 20:07:17,650 - pyftpdlib - INFO - 127.0.0.1:47500-[] FTP session closed (disconnect).
+2025-07-02 20:07:20,971 - pyftpdlib - INFO - 127.0.0.1:35574-[] FTP session opened (connect)
+2025-07-02 20:07:20,972 - SecurityManager - WARNING - IP 127.0.0.1 BLOQUEADA por 3 intentos fallidos
+2025-07-02 20:07:23,977 - pyftpdlib - INFO - 127.0.0.1:35574-[] USER 'b' failed login.
+2025-07-02 20:07:24,457 - pyftpdlib - INFO - 127.0.0.1:35574-[] FTP session closed (disconnect).
+2025-07-02 20:11:48,351 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:12:32,630 - pyftpdlib - INFO - 127.0.0.1:33190-[] FTP session opened (connect)
+2025-07-02 20:12:32,630 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:32,631 - pyftpdlib - INFO - 127.0.0.1:33190-[admin] USER 'admin' logged in.
+2025-07-02 20:12:32,631 - pyftpdlib - INFO - 127.0.0.1:33190-[admin] FTP session closed (disconnect).
+2025-07-02 20:12:32,846 - pyftpdlib - INFO - 127.0.0.1:33196-[] FTP session opened (connect)
+2025-07-02 20:12:32,847 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:32,847 - pyftpdlib - INFO - 127.0.0.1:33196-[admin] USER 'admin' logged in.
+2025-07-02 20:12:32,847 - pyftpdlib - INFO - 127.0.0.1:33196-[admin] FTP session closed (disconnect).
+2025-07-02 20:12:38,644 - pyftpdlib - INFO - 127.0.0.1:33200-[] FTP session opened (connect)
+2025-07-02 20:12:38,644 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:38,644 - pyftpdlib - INFO - 127.0.0.1:33200-[admin] USER 'admin' logged in.
+2025-07-02 20:12:38,645 - pyftpdlib - INFO - 127.0.0.1:33200-[admin] FTP session closed (disconnect).
+2025-07-02 20:12:43,644 - pyftpdlib - INFO - 127.0.0.1:37376-[] FTP session opened (connect)
+2025-07-02 20:12:43,644 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:43,644 - pyftpdlib - INFO - 127.0.0.1:37376-[admin] USER 'admin' logged in.
+2025-07-02 20:12:43,646 - pyftpdlib - INFO - 127.0.0.1:37376-[admin] FTP session closed (disconnect).
+2025-07-02 20:12:48,644 - pyftpdlib - INFO - 127.0.0.1:37380-[] FTP session opened (connect)
+2025-07-02 20:12:48,644 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:48,644 - pyftpdlib - INFO - 127.0.0.1:37380-[admin] USER 'admin' logged in.
+2025-07-02 20:12:48,644 - pyftpdlib - INFO - 127.0.0.1:37380-[admin] FTP session closed (disconnect).
+2025-07-02 20:12:53,644 - pyftpdlib - INFO - 127.0.0.1:41318-[] FTP session opened (connect)
+2025-07-02 20:12:53,644 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:53,644 - pyftpdlib - INFO - 127.0.0.1:41318-[admin] USER 'admin' logged in.
+2025-07-02 20:12:53,645 - pyftpdlib - INFO - 127.0.0.1:41318-[admin] FTP session closed (disconnect).
+2025-07-02 20:12:58,644 - pyftpdlib - INFO - 127.0.0.1:41320-[] FTP session opened (connect)
+2025-07-02 20:12:58,644 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:12:58,644 - pyftpdlib - INFO - 127.0.0.1:41320-[admin] USER 'admin' logged in.
+2025-07-02 20:12:58,644 - pyftpdlib - INFO - 127.0.0.1:41320-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:03,644 - pyftpdlib - INFO - 127.0.0.1:48864-[] FTP session opened (connect)
+2025-07-02 20:13:03,644 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:03,644 - pyftpdlib - INFO - 127.0.0.1:48864-[admin] USER 'admin' logged in.
+2025-07-02 20:13:03,645 - pyftpdlib - INFO - 127.0.0.1:48864-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:09,390 - pyftpdlib - INFO - 127.0.0.1:48872-[] FTP session opened (connect)
+2025-07-02 20:13:09,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:09,391 - pyftpdlib - INFO - 127.0.0.1:48872-[admin] USER 'admin' logged in.
+2025-07-02 20:13:09,391 - pyftpdlib - INFO - 127.0.0.1:48872-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:14,391 - pyftpdlib - INFO - 127.0.0.1:33134-[] FTP session opened (connect)
+2025-07-02 20:13:14,392 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:14,392 - pyftpdlib - INFO - 127.0.0.1:33134-[admin] USER 'admin' logged in.
+2025-07-02 20:13:14,392 - pyftpdlib - INFO - 127.0.0.1:33134-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:19,391 - pyftpdlib - INFO - 127.0.0.1:33140-[] FTP session opened (connect)
+2025-07-02 20:13:19,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:19,391 - pyftpdlib - INFO - 127.0.0.1:33140-[admin] USER 'admin' logged in.
+2025-07-02 20:13:19,392 - pyftpdlib - INFO - 127.0.0.1:33140-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:24,391 - pyftpdlib - INFO - 127.0.0.1:52074-[] FTP session opened (connect)
+2025-07-02 20:13:24,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:24,391 - pyftpdlib - INFO - 127.0.0.1:52074-[admin] USER 'admin' logged in.
+2025-07-02 20:13:24,391 - pyftpdlib - INFO - 127.0.0.1:52074-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:29,391 - pyftpdlib - INFO - 127.0.0.1:52082-[] FTP session opened (connect)
+2025-07-02 20:13:29,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:29,391 - pyftpdlib - INFO - 127.0.0.1:52082-[admin] USER 'admin' logged in.
+2025-07-02 20:13:29,391 - pyftpdlib - INFO - 127.0.0.1:52082-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:34,391 - pyftpdlib - INFO - 127.0.0.1:41572-[] FTP session opened (connect)
+2025-07-02 20:13:34,392 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:34,392 - pyftpdlib - INFO - 127.0.0.1:41572-[admin] USER 'admin' logged in.
+2025-07-02 20:13:34,392 - pyftpdlib - INFO - 127.0.0.1:41572-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:39,396 - pyftpdlib - INFO - 127.0.0.1:41584-[] FTP session opened (connect)
+2025-07-02 20:13:39,396 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:39,396 - pyftpdlib - INFO - 127.0.0.1:41584-[admin] USER 'admin' logged in.
+2025-07-02 20:13:39,396 - pyftpdlib - INFO - 127.0.0.1:41584-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:44,391 - pyftpdlib - INFO - 127.0.0.1:46050-[] FTP session opened (connect)
+2025-07-02 20:13:44,392 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:44,392 - pyftpdlib - INFO - 127.0.0.1:46050-[admin] USER 'admin' logged in.
+2025-07-02 20:13:44,392 - pyftpdlib - INFO - 127.0.0.1:46050-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:49,391 - pyftpdlib - INFO - 127.0.0.1:46058-[] FTP session opened (connect)
+2025-07-02 20:13:49,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:49,391 - pyftpdlib - INFO - 127.0.0.1:46058-[admin] USER 'admin' logged in.
+2025-07-02 20:13:49,391 - pyftpdlib - INFO - 127.0.0.1:46058-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:54,391 - pyftpdlib - INFO - 127.0.0.1:52004-[] FTP session opened (connect)
+2025-07-02 20:13:54,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:54,391 - pyftpdlib - INFO - 127.0.0.1:52004-[admin] USER 'admin' logged in.
+2025-07-02 20:13:54,391 - pyftpdlib - INFO - 127.0.0.1:52004-[admin] FTP session closed (disconnect).
+2025-07-02 20:13:59,391 - pyftpdlib - INFO - 127.0.0.1:52020-[] FTP session opened (connect)
+2025-07-02 20:13:59,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:13:59,391 - pyftpdlib - INFO - 127.0.0.1:52020-[admin] USER 'admin' logged in.
+2025-07-02 20:13:59,391 - pyftpdlib - INFO - 127.0.0.1:52020-[admin] FTP session closed (disconnect).
+2025-07-02 20:14:04,392 - pyftpdlib - INFO - 127.0.0.1:53728-[] FTP session opened (connect)
+2025-07-02 20:14:04,392 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:14:04,392 - pyftpdlib - INFO - 127.0.0.1:53728-[admin] USER 'admin' logged in.
+2025-07-02 20:14:04,392 - pyftpdlib - INFO - 127.0.0.1:53728-[admin] FTP session closed (disconnect).
+2025-07-02 20:14:47,391 - pyftpdlib - INFO - 127.0.0.1:44806-[] FTP session opened (connect)
+2025-07-02 20:14:47,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:14:47,391 - pyftpdlib - INFO - 127.0.0.1:44806-[admin] USER 'admin' logged in.
+2025-07-02 20:14:47,391 - pyftpdlib - INFO - 127.0.0.1:44806-[admin] FTP session closed (disconnect).
+2025-07-02 20:15:44,053 - pyftpdlib - INFO - 127.0.0.1:56560-[] FTP session opened (connect)
+2025-07-02 20:15:44,054 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:15:44,054 - pyftpdlib - INFO - 127.0.0.1:56560-[admin] USER 'admin' logged in.
+2025-07-02 20:15:44,054 - pyftpdlib - INFO - 127.0.0.1:56560-[admin] FTP session closed (disconnect).
+2025-07-02 20:16:48,352 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:21:42,345 - pyftpdlib - INFO - 127.0.0.1:45482-[] FTP session opened (connect)
+2025-07-02 20:21:42,345 - SecurityManager - WARNING - Intento fallido desde 127.0.0.1. Intentos restantes: 2
+2025-07-02 20:21:45,348 - pyftpdlib - INFO - 127.0.0.1:45482-[] USER 'server' failed login.
+2025-07-02 20:21:45,348 - pyftpdlib - INFO - 127.0.0.1:45482-[] FTP session closed (disconnect).
+2025-07-02 20:21:48,352 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:21:51,183 - pyftpdlib - INFO - 127.0.0.1:52004-[] FTP session opened (connect)
+2025-07-02 20:21:51,184 - SecurityManager - WARNING - Intento fallido desde 127.0.0.1. Intentos restantes: 1
+2025-07-02 20:21:54,186 - pyftpdlib - INFO - 127.0.0.1:52004-[] USER 'server' failed login.
+2025-07-02 20:21:54,187 - pyftpdlib - INFO - 127.0.0.1:52004-[] FTP session closed (disconnect).
+2025-07-02 20:21:56,183 - pyftpdlib - INFO - 127.0.0.1:52012-[] FTP session opened (connect)
+2025-07-02 20:21:56,184 - SecurityManager - WARNING - IP 127.0.0.1 BLOQUEADA por 3 intentos fallidos
+2025-07-02 20:21:59,186 - pyftpdlib - INFO - 127.0.0.1:52012-[] USER 'server' failed login.
+2025-07-02 20:21:59,186 - pyftpdlib - INFO - 127.0.0.1:52012-[] FTP session closed (disconnect).
+2025-07-02 20:22:01,183 - pyftpdlib - INFO - 127.0.0.1:49976-[] FTP session opened (connect)
+2025-07-02 20:22:01,184 - SecureAuthorizer - WARNING - Intento de conexión desde IP bloqueada: 127.0.0.1
+2025-07-02 20:22:04,186 - pyftpdlib - INFO - 127.0.0.1:49976-[] USER 'server' failed login.
+2025-07-02 20:22:04,186 - pyftpdlib - INFO - 127.0.0.1:49976-[] FTP session closed (disconnect).
+2025-07-02 20:22:06,183 - pyftpdlib - INFO - 127.0.0.1:49978-[] FTP session opened (connect)
+2025-07-02 20:22:06,184 - SecureAuthorizer - WARNING - Intento de conexión desde IP bloqueada: 127.0.0.1
+2025-07-02 20:22:09,186 - pyftpdlib - INFO - 127.0.0.1:49978-[] USER 'server' failed login.
+2025-07-02 20:22:09,186 - pyftpdlib - INFO - 127.0.0.1:49978-[] FTP session closed (disconnect).
+2025-07-02 20:26:48,353 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:31:48,354 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:33:39,599 - pyftpdlib - INFO - 127.0.0.1:56038-[] FTP session opened (connect)
+2025-07-02 20:33:39,600 - SecurityManager - WARNING - IP 127.0.0.1 BLOQUEADA por 3 intentos fallidos
+2025-07-02 20:33:42,604 - pyftpdlib - INFO - 127.0.0.1:56038-[] USER 'server' failed login.
+2025-07-02 20:33:43,111 - pyftpdlib - INFO - 127.0.0.1:56038-[] FTP session closed (disconnect).
+2025-07-02 20:33:50,334 - pyftpdlib - INFO - 127.0.0.1:43932-[] FTP session opened (connect)
+2025-07-02 20:33:50,335 - SecureAuthorizer - WARNING - Intento de conexión desde IP bloqueada: 127.0.0.1
+2025-07-02 20:33:53,337 - pyftpdlib - INFO - 127.0.0.1:43932-[] USER 'admin' failed login.
+2025-07-02 20:33:53,866 - pyftpdlib - INFO - 127.0.0.1:43932-[] FTP session closed (disconnect).
+2025-07-02 20:34:59,856 - pyftpdlib - INFO - 127.0.0.1:33646-[] FTP session opened (connect)
+2025-07-02 20:34:59,856 - SecureAuthorizer - WARNING - Intento de conexión desde IP bloqueada: 127.0.0.1
+2025-07-02 20:35:02,859 - pyftpdlib - INFO - 127.0.0.1:33646-[] USER 'admin' failed login.
+2025-07-02 20:35:03,370 - pyftpdlib - INFO - 127.0.0.1:33646-[] FTP session closed (disconnect).
+2025-07-02 20:35:41,280 - pyftpdlib - INFO - 127.0.0.1:43368-[] FTP session opened (connect)
+2025-07-02 20:35:41,280 - SecureAuthorizer - WARNING - Intento de conexión desde IP bloqueada: 127.0.0.1
+2025-07-02 20:35:44,283 - pyftpdlib - INFO - 127.0.0.1:43368-[] USER 'admin' failed login.
+2025-07-02 20:35:44,836 - pyftpdlib - INFO - 127.0.0.1:43368-[] FTP session closed (disconnect).
+2025-07-02 20:36:17,207 - pyftpdlib - INFO - 127.0.0.1:34116-[] FTP session opened (connect)
+2025-07-02 20:36:17,207 - SecureAuthorizer - WARNING - Intento de conexión desde IP bloqueada: 127.0.0.1
+2025-07-02 20:36:20,210 - pyftpdlib - INFO - 127.0.0.1:34116-[] USER 'admin' failed login.
+2025-07-02 20:36:48,350 - DahuaFTPServer - WARNING - IPs bloqueadas actualmente: 1
+2025-07-02 20:36:48,351 - DahuaFTPServer - WARNING -   - 127.0.0.1: 1 minutos restantes
+2025-07-02 20:36:48,354 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:36:54,572 - pyftpdlib - INFO - received interrupt signal
+2025-07-02 20:36:54,572 - pyftpdlib - INFO - >>> shutting down FTP server, 2 socket(s), pid=488857 <<<
+2025-07-02 20:36:54,575 - pyftpdlib - INFO - 127.0.0.1:34116-[] FTP session closed (disconnect).
+2025-07-02 20:36:58,556 - DahuaFTPServer - INFO - Servidor FTP configurado en 0.0.0.0:60000
+2025-07-02 20:36:58,556 - DahuaFTPServer - INFO - Seguridad: máximo 3 intentos, bloqueo por 300s
+2025-07-02 20:36:58,556 - DahuaFTPServer - INFO - Iniciando servidor FTP para DVR Dahua...
+2025-07-02 20:36:58,556 - DahuaFTPServer - INFO - Directorio de videos: /home/thiago/Escritorio/Code/FTP/dahua_videos
+2025-07-02 20:36:58,556 - DahuaFTPServer - INFO - Usuario: admin, Contraseña: diema2051
+2025-07-02 20:36:58,556 - DahuaFTPServer - INFO - Días de retención de archivos: 7
+2025-07-02 20:36:58,557 - pyftpdlib - INFO - concurrency model: async
+2025-07-02 20:36:58,557 - pyftpdlib - INFO - masquerade (NAT) address: None
+2025-07-02 20:36:58,557 - pyftpdlib - INFO - passive ports: 60000->65534
+2025-07-02 20:36:58,557 - pyftpdlib - INFO - >>> starting FTP server on 0.0.0.0:60000, pid=492079 <<<
+2025-07-02 20:36:58,557 - DahuaFTPServer - INFO - Estadísticas: 1 archivos, 0.00 GB
+2025-07-02 20:37:08,152 - pyftpdlib - INFO - 127.0.0.1:59598-[] FTP session opened (connect)
+2025-07-02 20:37:08,153 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:08,153 - pyftpdlib - INFO - 127.0.0.1:59598-[admin] USER 'admin' logged in.
+2025-07-02 20:37:08,153 - pyftpdlib - INFO - 127.0.0.1:59598-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:08,365 - pyftpdlib - INFO - 127.0.0.1:59610-[] FTP session opened (connect)
+2025-07-02 20:37:08,365 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:08,365 - pyftpdlib - INFO - 127.0.0.1:59610-[admin] USER 'admin' logged in.
+2025-07-02 20:37:08,365 - pyftpdlib - INFO - 127.0.0.1:59610-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:14,173 - pyftpdlib - INFO - 127.0.0.1:34168-[] FTP session opened (connect)
+2025-07-02 20:37:14,173 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:14,174 - pyftpdlib - INFO - 127.0.0.1:34168-[admin] USER 'admin' logged in.
+2025-07-02 20:37:14,174 - pyftpdlib - INFO - 127.0.0.1:34168-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:19,173 - pyftpdlib - INFO - 127.0.0.1:34182-[] FTP session opened (connect)
+2025-07-02 20:37:19,174 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:19,174 - pyftpdlib - INFO - 127.0.0.1:34182-[admin] USER 'admin' logged in.
+2025-07-02 20:37:19,174 - pyftpdlib - INFO - 127.0.0.1:34182-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:24,173 - pyftpdlib - INFO - 127.0.0.1:39690-[] FTP session opened (connect)
+2025-07-02 20:37:24,174 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:24,174 - pyftpdlib - INFO - 127.0.0.1:39690-[admin] USER 'admin' logged in.
+2025-07-02 20:37:24,174 - pyftpdlib - INFO - 127.0.0.1:39690-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:30,494 - pyftpdlib - INFO - 127.0.0.1:38562-[] FTP session opened (connect)
+2025-07-02 20:37:30,495 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:30,495 - pyftpdlib - INFO - 127.0.0.1:38562-[admin] USER 'admin' logged in.
+2025-07-02 20:37:30,495 - pyftpdlib - INFO - 127.0.0.1:38562-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:36,268 - pyftpdlib - INFO - 127.0.0.1:38576-[] FTP session opened (connect)
+2025-07-02 20:37:36,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:36,268 - pyftpdlib - INFO - 127.0.0.1:38576-[admin] USER 'admin' logged in.
+2025-07-02 20:37:36,268 - pyftpdlib - INFO - 127.0.0.1:38576-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:41,268 - pyftpdlib - INFO - 127.0.0.1:50538-[] FTP session opened (connect)
+2025-07-02 20:37:41,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:41,268 - pyftpdlib - INFO - 127.0.0.1:50538-[admin] USER 'admin' logged in.
+2025-07-02 20:37:41,268 - pyftpdlib - INFO - 127.0.0.1:50538-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:46,268 - pyftpdlib - INFO - 127.0.0.1:50554-[] FTP session opened (connect)
+2025-07-02 20:37:46,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:46,269 - pyftpdlib - INFO - 127.0.0.1:50554-[admin] USER 'admin' logged in.
+2025-07-02 20:37:46,269 - pyftpdlib - INFO - 127.0.0.1:50554-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:51,268 - pyftpdlib - INFO - 127.0.0.1:33190-[] FTP session opened (connect)
+2025-07-02 20:37:51,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:51,268 - pyftpdlib - INFO - 127.0.0.1:33190-[admin] USER 'admin' logged in.
+2025-07-02 20:37:51,268 - pyftpdlib - INFO - 127.0.0.1:33190-[admin] FTP session closed (disconnect).
+2025-07-02 20:37:56,268 - pyftpdlib - INFO - 127.0.0.1:33198-[] FTP session opened (connect)
+2025-07-02 20:37:56,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:37:56,268 - pyftpdlib - INFO - 127.0.0.1:33198-[admin] USER 'admin' logged in.
+2025-07-02 20:37:56,269 - pyftpdlib - INFO - 127.0.0.1:33198-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:01,268 - pyftpdlib - INFO - 127.0.0.1:42660-[] FTP session opened (connect)
+2025-07-02 20:38:01,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:01,268 - pyftpdlib - INFO - 127.0.0.1:42660-[admin] USER 'admin' logged in.
+2025-07-02 20:38:01,268 - pyftpdlib - INFO - 127.0.0.1:42660-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:06,270 - pyftpdlib - INFO - 127.0.0.1:42666-[] FTP session opened (connect)
+2025-07-02 20:38:06,270 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:06,271 - pyftpdlib - INFO - 127.0.0.1:42666-[admin] USER 'admin' logged in.
+2025-07-02 20:38:06,271 - pyftpdlib - INFO - 127.0.0.1:42666-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:11,268 - pyftpdlib - INFO - 127.0.0.1:34780-[] FTP session opened (connect)
+2025-07-02 20:38:11,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:11,268 - pyftpdlib - INFO - 127.0.0.1:34780-[admin] USER 'admin' logged in.
+2025-07-02 20:38:11,268 - pyftpdlib - INFO - 127.0.0.1:34780-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:16,268 - pyftpdlib - INFO - 127.0.0.1:34788-[] FTP session opened (connect)
+2025-07-02 20:38:16,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:16,268 - pyftpdlib - INFO - 127.0.0.1:34788-[admin] USER 'admin' logged in.
+2025-07-02 20:38:16,268 - pyftpdlib - INFO - 127.0.0.1:34788-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:21,268 - pyftpdlib - INFO - 127.0.0.1:53944-[] FTP session opened (connect)
+2025-07-02 20:38:21,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:21,268 - pyftpdlib - INFO - 127.0.0.1:53944-[admin] USER 'admin' logged in.
+2025-07-02 20:38:21,268 - pyftpdlib - INFO - 127.0.0.1:53944-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:26,268 - pyftpdlib - INFO - 127.0.0.1:53954-[] FTP session opened (connect)
+2025-07-02 20:38:26,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:26,268 - pyftpdlib - INFO - 127.0.0.1:53954-[admin] USER 'admin' logged in.
+2025-07-02 20:38:26,268 - pyftpdlib - INFO - 127.0.0.1:53954-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:31,268 - pyftpdlib - INFO - 127.0.0.1:38032-[] FTP session opened (connect)
+2025-07-02 20:38:31,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:31,268 - pyftpdlib - INFO - 127.0.0.1:38032-[admin] USER 'admin' logged in.
+2025-07-02 20:38:31,268 - pyftpdlib - INFO - 127.0.0.1:38032-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:36,268 - pyftpdlib - INFO - 127.0.0.1:38042-[] FTP session opened (connect)
+2025-07-02 20:38:36,269 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:36,269 - pyftpdlib - INFO - 127.0.0.1:38042-[admin] USER 'admin' logged in.
+2025-07-02 20:38:36,269 - pyftpdlib - INFO - 127.0.0.1:38042-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:41,268 - pyftpdlib - INFO - 127.0.0.1:56818-[] FTP session opened (connect)
+2025-07-02 20:38:41,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:41,268 - pyftpdlib - INFO - 127.0.0.1:56818-[admin] USER 'admin' logged in.
+2025-07-02 20:38:41,268 - pyftpdlib - INFO - 127.0.0.1:56818-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:46,268 - pyftpdlib - INFO - 127.0.0.1:56828-[] FTP session opened (connect)
+2025-07-02 20:38:46,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:46,268 - pyftpdlib - INFO - 127.0.0.1:56828-[admin] USER 'admin' logged in.
+2025-07-02 20:38:46,269 - pyftpdlib - INFO - 127.0.0.1:56828-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:51,269 - pyftpdlib - INFO - 127.0.0.1:36348-[] FTP session opened (connect)
+2025-07-02 20:38:51,269 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:51,269 - pyftpdlib - INFO - 127.0.0.1:36348-[admin] USER 'admin' logged in.
+2025-07-02 20:38:51,269 - pyftpdlib - INFO - 127.0.0.1:36348-[admin] FTP session closed (disconnect).
+2025-07-02 20:38:56,268 - pyftpdlib - INFO - 127.0.0.1:36358-[] FTP session opened (connect)
+2025-07-02 20:38:56,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:38:56,271 - pyftpdlib - INFO - 127.0.0.1:36358-[admin] USER 'admin' logged in.
+2025-07-02 20:38:56,271 - pyftpdlib - INFO - 127.0.0.1:36358-[admin] FTP session closed (disconnect).
+2025-07-02 20:39:01,269 - pyftpdlib - INFO - 127.0.0.1:59868-[] FTP session opened (connect)
+2025-07-02 20:39:01,270 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:39:01,270 - pyftpdlib - INFO - 127.0.0.1:59868-[admin] USER 'admin' logged in.
+2025-07-02 20:39:01,270 - pyftpdlib - INFO - 127.0.0.1:59868-[admin] FTP session closed (disconnect).
+2025-07-02 20:39:06,269 - pyftpdlib - INFO - 127.0.0.1:59876-[] FTP session opened (connect)
+2025-07-02 20:39:06,269 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:39:06,270 - pyftpdlib - INFO - 127.0.0.1:59876-[admin] USER 'admin' logged in.
+2025-07-02 20:39:06,270 - pyftpdlib - INFO - 127.0.0.1:59876-[admin] FTP session closed (disconnect).
+2025-07-02 20:39:11,267 - pyftpdlib - INFO - 127.0.0.1:41436-[] FTP session opened (connect)
+2025-07-02 20:39:11,268 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:39:11,268 - pyftpdlib - INFO - 127.0.0.1:41436-[admin] USER 'admin' logged in.
+2025-07-02 20:39:11,268 - pyftpdlib - INFO - 127.0.0.1:41436-[admin] FTP session closed (disconnect).
+2025-07-02 20:39:12,481 - pyftpdlib - INFO - 127.0.0.1:41448-[] FTP session opened (connect)
+2025-07-02 20:39:12,481 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:39:12,481 - pyftpdlib - INFO - 127.0.0.1:41448-[admin] USER 'admin' logged in.
+2025-07-02 20:39:12,482 - pyftpdlib - INFO - 127.0.0.1:41448-[admin] FTP session closed (disconnect).
+2025-07-02 20:39:23,947 - pyftpdlib - INFO - 127.0.0.1:56954-[] FTP session opened (connect)
+2025-07-02 20:39:23,948 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:39:23,948 - pyftpdlib - INFO - 127.0.0.1:56954-[admin] USER 'admin' logged in.
+2025-07-02 20:39:23,948 - pyftpdlib - INFO - 127.0.0.1:56954-[admin] FTP session closed (disconnect).
+2025-07-02 20:39:42,278 - pyftpdlib - INFO - 127.0.0.1:60198-[] FTP session opened (connect)
+2025-07-02 20:39:42,279 - SecurityManager - WARNING - Intento fallido desde 127.0.0.1. Intentos restantes: 2
+2025-07-02 20:39:45,282 - pyftpdlib - INFO - 127.0.0.1:60198-[] USER 'a' failed login.
+2025-07-02 20:39:45,725 - pyftpdlib - INFO - 127.0.0.1:60198-[] FTP session closed (disconnect).
+2025-07-02 20:40:02,809 - pyftpdlib - INFO - 127.0.0.1:51370-[] FTP session opened (connect)
+2025-07-02 20:40:02,810 - SecurityManager - WARNING - Intento fallido desde 127.0.0.1. Intentos restantes: 1
+2025-07-02 20:40:05,813 - pyftpdlib - INFO - 127.0.0.1:51370-[] USER 'a' failed login.
+2025-07-02 20:40:06,278 - pyftpdlib - INFO - 127.0.0.1:51370-[] FTP session closed (disconnect).
+2025-07-02 20:40:28,307 - pyftpdlib - INFO - 127.0.0.1:56668-[] FTP session opened (connect)
+2025-07-02 20:40:28,308 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:28,308 - pyftpdlib - INFO - 127.0.0.1:56668-[admin] USER 'admin' logged in.
+2025-07-02 20:40:28,308 - pyftpdlib - INFO - 127.0.0.1:56668-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:28,518 - pyftpdlib - INFO - 127.0.0.1:56676-[] FTP session opened (connect)
+2025-07-02 20:40:28,519 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:28,519 - pyftpdlib - INFO - 127.0.0.1:56676-[admin] USER 'admin' logged in.
+2025-07-02 20:40:28,519 - pyftpdlib - INFO - 127.0.0.1:56676-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:34,305 - pyftpdlib - INFO - 127.0.0.1:48334-[] FTP session opened (connect)
+2025-07-02 20:40:34,306 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:34,306 - pyftpdlib - INFO - 127.0.0.1:48334-[admin] USER 'admin' logged in.
+2025-07-02 20:40:34,306 - pyftpdlib - INFO - 127.0.0.1:48334-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:39,305 - pyftpdlib - INFO - 127.0.0.1:48342-[] FTP session opened (connect)
+2025-07-02 20:40:39,306 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:39,306 - pyftpdlib - INFO - 127.0.0.1:48342-[admin] USER 'admin' logged in.
+2025-07-02 20:40:39,306 - pyftpdlib - INFO - 127.0.0.1:48342-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:44,390 - pyftpdlib - INFO - 127.0.0.1:59466-[] FTP session opened (connect)
+2025-07-02 20:40:44,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:44,391 - pyftpdlib - INFO - 127.0.0.1:59466-[admin] USER 'admin' logged in.
+2025-07-02 20:40:44,391 - pyftpdlib - INFO - 127.0.0.1:59466-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:49,391 - pyftpdlib - INFO - 127.0.0.1:59476-[] FTP session opened (connect)
+2025-07-02 20:40:49,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:49,391 - pyftpdlib - INFO - 127.0.0.1:59476-[admin] USER 'admin' logged in.
+2025-07-02 20:40:49,391 - pyftpdlib - INFO - 127.0.0.1:59476-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:54,390 - pyftpdlib - INFO - 127.0.0.1:42248-[] FTP session opened (connect)
+2025-07-02 20:40:54,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:54,391 - pyftpdlib - INFO - 127.0.0.1:42248-[admin] USER 'admin' logged in.
+2025-07-02 20:40:54,391 - pyftpdlib - INFO - 127.0.0.1:42248-[admin] FTP session closed (disconnect).
+2025-07-02 20:40:59,391 - pyftpdlib - INFO - 127.0.0.1:42262-[] FTP session opened (connect)
+2025-07-02 20:40:59,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:40:59,392 - pyftpdlib - INFO - 127.0.0.1:42262-[admin] USER 'admin' logged in.
+2025-07-02 20:40:59,392 - pyftpdlib - INFO - 127.0.0.1:42262-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:04,391 - pyftpdlib - INFO - 127.0.0.1:41688-[] FTP session opened (connect)
+2025-07-02 20:41:04,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:04,391 - pyftpdlib - INFO - 127.0.0.1:41688-[admin] USER 'admin' logged in.
+2025-07-02 20:41:04,391 - pyftpdlib - INFO - 127.0.0.1:41688-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:09,391 - pyftpdlib - INFO - 127.0.0.1:41702-[] FTP session opened (connect)
+2025-07-02 20:41:09,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:09,391 - pyftpdlib - INFO - 127.0.0.1:41702-[admin] USER 'admin' logged in.
+2025-07-02 20:41:09,391 - pyftpdlib - INFO - 127.0.0.1:41702-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:14,391 - pyftpdlib - INFO - 127.0.0.1:38852-[] FTP session opened (connect)
+2025-07-02 20:41:14,391 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:14,391 - pyftpdlib - INFO - 127.0.0.1:38852-[admin] USER 'admin' logged in.
+2025-07-02 20:41:14,391 - pyftpdlib - INFO - 127.0.0.1:38852-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:17,440 - pyftpdlib - INFO - 127.0.0.1:38854-[] FTP session opened (connect)
+2025-07-02 20:41:17,440 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:17,440 - pyftpdlib - INFO - 127.0.0.1:38854-[admin] USER 'admin' logged in.
+2025-07-02 20:41:17,440 - pyftpdlib - INFO - 127.0.0.1:38854-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:23,225 - pyftpdlib - INFO - 127.0.0.1:59896-[] FTP session opened (connect)
+2025-07-02 20:41:23,226 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:23,226 - pyftpdlib - INFO - 127.0.0.1:59896-[admin] USER 'admin' logged in.
+2025-07-02 20:41:23,226 - pyftpdlib - INFO - 127.0.0.1:59896-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:28,225 - pyftpdlib - INFO - 127.0.0.1:59910-[] FTP session opened (connect)
+2025-07-02 20:41:28,226 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:28,226 - pyftpdlib - INFO - 127.0.0.1:59910-[admin] USER 'admin' logged in.
+2025-07-02 20:41:28,226 - pyftpdlib - INFO - 127.0.0.1:59910-[admin] FTP session closed (disconnect).
+2025-07-02 20:41:33,225 - pyftpdlib - INFO - 127.0.0.1:42690-[] FTP session opened (connect)
+2025-07-02 20:41:33,226 - SecurityManager - INFO - Login exitoso desde 127.0.0.1 (usuario: admin)
+2025-07-02 20:41:33,226 - pyftpdlib - INFO - 127.0.0.1:42690-[admin] USER 'admin' logged in.
+2025-07-02 20:41:33,226 - pyftpdlib - INFO - 127.0.0.1:42690-[admin] FTP session closed (disconnect).
