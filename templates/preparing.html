@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Preparando video...{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;">
+    <div class="card-body">
+        <h3><i class="fas fa-spinner fa-spin"></i> Preparando video para reproducción...</h3>
+        <p>Por favor espera unos segundos mientras convertimos el archivo.</p>
+    </div>
+</div>
+<script>
+    // Poll cada 2 segundos para ver si el video está listo
+    function checkReady() {
+        fetch("{{ url_for('check_temp_video', temp_filename=temp_filename) }}")
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.ready) {
+                    window.location.href = "{{ url_for('player_temp', temp_filename=temp_filename) }}";
+                } else {
+                    setTimeout(checkReady, 2000);
+                }
+            });
+    }
+    checkReady();
+</script>
+{% endblock %}

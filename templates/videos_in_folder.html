@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+{% block title %}Videos en {{ alias or folder }}{% endblock %}
+{% block content %}
+<div class="videos-page">
+    <div class="page-header">
+        <div class="header-left">
+            <h1>
+                <i class="fas fa-folder-open"></i>
+                {{ alias or folder }}
+                {% if alias %}
+                    <small class="folder-real-name">({{ folder }})</small>
+                {% endif %}
+            </h1>
+            <div class="breadcrumb">
+                <a href="{{ url_for('videos') }}">
+                    <i class="fas fa-video"></i> Carpetas
+                </a>
+                <i class="fas fa-chevron-right"></i>
+                <span>{{ alias or folder }}</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <div class="search-box">
+                <input type="text" id="videoSearch" placeholder="Buscar videos..." onkeyup="filterVideos()">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="view-toggle">
+                <button class="btn-icon active" onclick="setView('grid')" id="gridViewBtn" title="Vista en cuadrícula">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button class="btn-icon" onclick="setView('list')" id="listViewBtn" title="Vista en lista">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+            <a href="{{ url_for('videos') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas de la carpeta -->
+    {% if videos %}
+    <div class="folder-stats-card">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <i class="fas fa-video"></i>
+                <div>
+                    <span class="stat-number">{{ videos|length }}</span>
+                    <span class="stat-label">Videos</span>
+                </div>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-hdd"></i>
+                <div>
+                    <span class="stat-number">{{ "%.1f"|format((videos|sum(attribute='size')) / (1024*1024*1024)) }} GB</span>
+                    <span class="stat-label">Tamaño Total</span>
+                </div>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <span class="stat-number">{{ videos|length }}</span>
+                    <span class="stat-label">Archivos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Contenedor de videos -->
+    <div class="videos-container">
+        {% if videos %}
+            <!-- Vista en cuadrícula (por defecto) -->
+            <div class="videos-grid" id="videosGrid">
+                {% for v in videos %}
+                <div class="video-card" data-video-name="{{ v.name|lower }}">
+                    <div class="video-thumbnail">
+                        <i class="fas fa-play-circle"></i>
+                        <div class="video-duration">
+                            <i class="fas fa-clock"></i>
+                            <span>Video</span>
+                        </div>
+                    </div>
+                    
+                    <div class="video-info">
+                        <h3 class="video-title" title="{{ v.name }}">{{ v.name }}</h3>
+                        <div class="video-meta">
+                            <span class="video-size">
+                                <i class="fas fa-hdd"></i>
+                                {{ "%.1f"|format(v.size / (1024*1024)) }} MB
+                            </span>
+                            <span class="video-date">
+                                <i class="fas fa-calendar"></i>
+                                {{ v.mtime.strftime('%d/%m/%Y') }}
+                            </span>
+                        </div>
+                        <div class="video-time">
+                            <i class="fas fa-clock"></i>
+                            {{ v.mtime.strftime('%H:%M') }}
+                        </div>
+                    </div>
+                    
+                    <div class="video-actions">
+                        <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir video">
+                            <i class="fas fa-play"></i>
+                        </a>
+                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar video">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button class="btn btn-info btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Información del video">
+                            <i class="fas fa-info"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Vista en lista (oculta por defecto) -->
+            <div class="videos-list" id="videosList" style="display: none;">
+                <div class="list-header">
+                    <div class="col-name">Nombre</div>
+                    <div class="col-size">Tamaño</div>
+                    <div class="col-date">Fecha</div>
+                    <div class="col-actions">Acciones</div>
+                </div>
+                {% for v in videos %}
+                <div class="video-row" data-video-name="{{ v.name|lower }}">
+                    <div class="col-name">
+                        <i class="fas fa-video"></i>
+                        <span class="video-name" title="{{ v.name }}">{{ v.name }}</span>
+                    </div>
+                    <div class="col-size">{{ "%.1f"|format(v.size / (1024*1024)) }} MB</div>
+                    <div class="col-date">
+                        <div class="date-info">
+                            <span class="date">{{ v.mtime.strftime('%d/%m/%Y') }}</span>
+                            <span class="time">{{ v.mtime.strftime('%H:%M') }}</span>
+                        </div>
+                    </div>
+                    <div class="col-actions">
+                        <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
+                            <i class="fas fa-play"></i>
+                        </a>
+                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button class="btn btn-info btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Info">
+                            <i class="fas fa-info"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-video-slash"></i>
+                <div class="empty-message">
+                    <h3>No hay videos en esta carpeta</h3>
+                    <p>Esta carpeta no contiene archivos de video o están siendo procesados.</p>
+                </div>
+                <button class="btn btn-primary btn-sm update-btn" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de información del video -->
+<div class="modal" id="videoInfoModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-info-circle"></i> Información del Video</h3>
+            <button class="btn-close" onclick="closeVideoInfo()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="info-row">
+                <strong>Nombre:</strong>
+                <span id="modalVideoName"></span>
+            </div>
+            <div class="info-row">
+                <strong>Tamaño:</strong>
+                <span id="modalVideoSize"></span>
+            </div>
+            <div class="info-row">
+                <strong>Fecha de creación:</strong>
+                <span id="modalVideoDate"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+
+.update-btn {
+    margin-top: 2rem;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.8rem;
+    height: 2.5rem;
+    width: 9rem;
+    min-width: 0;
+    min-height: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+}
+.update-btn i.fas.fa-sync-alt {
+    font-size: 1.5em;
+    margin-right: 0.5em;
+    margin-top: 0.7em;
+    vertical-align: middle;
+    line-height: 1;
+}
+.videos-page {
+    padding: 0;
+}
+
+.header-left {
+    flex: 1;
+}
+
+.folder-real-name {
+    font-size: 1rem;
+    color: #888;
+    font-weight: normal;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.breadcrumb a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.view-toggle {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.view-toggle .btn-icon {
+    border: none;
+    background: white;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.view-toggle .btn-icon.active {
+    background: #667eea;
+    color: white;
+}
+
+.folder-stats-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-item i {
+    font-size: 2rem;
+    color: #667eea;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Vista en cuadrícula */
+.videos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.video-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.video-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.video-thumbnail {
+    position: relative;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.video-thumbnail i {
+    font-size: 3rem;
+    opacity: 0.8;
+}
+
+.video-duration {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.video-info {
+    padding: 1rem;
+}
+
+.video-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.video-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.video-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.video-time {
+    font-size: 0.8rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.video-actions {
+    padding: 1rem;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+/* Vista en lista */
+.videos-list {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.list-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    font-weight: bold;
+    color: #333;
+    border-bottom: 1px solid #eee;
+}
+
+.video-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.video-row:hover {
+    background-color: #f8f9fa;
+}
+
+.col-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.video-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.date-info .time {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.col-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+.btn-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .videos-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .list-header,
+    .video-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .list-header {
+        display: none;
+    }
+    
+    .video-row {
+        display: block;
+        padding: 1rem;
+    }
+    
+    .col-name,
+    .col-size,
+    .col-date,
+    .col-actions {
+        margin-bottom: 0.5rem;
+    }
+    
+    .col-actions {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+let currentView = 'grid';
+
+function filterVideos() {
+    const searchTerm = document.getElementById('videoSearch').value.toLowerCase();
+    const videos = document.querySelectorAll('.video-card, .video-row');
+    
+    videos.forEach(video => {
+        const videoName = video.dataset.videoName;
+        
+        if (videoName.includes(searchTerm)) {
+            video.style.display = currentView === 'grid' ? 'block' : 'grid';
+        } else {
+            video.style.display = 'none';
+        }
+    });
+}
+
+function setView(view) {
+    currentView = view;
+    const gridView = document.getElementById('videosGrid');
+    const listView = document.getElementById('videosList');
+    const gridBtn = document.getElementById('gridViewBtn');
+    const listBtn = document.getElementById('listViewBtn');
+    
+    if (view === 'grid') {
+        gridView.style.display = 'grid';
+        listView.style.display = 'none';
+        gridBtn.classList.add('active');
+        listBtn.classList.remove('active');
+    } else {
+        gridView.style.display = 'none';
+        listView.style.display = 'block';
+        gridBtn.classList.remove('active');
+        listBtn.classList.add('active');
+    }
+    
+    // Reapply filter if there's a search term
+    const searchTerm = document.getElementById('videoSearch').value;
+    if (searchTerm) {
+        filterVideos();
+    }
+}
+
+function showVideoInfo(name, size, date) {
+    document.getElementById('modalVideoName').textContent = name;
+    document.getElementById('modalVideoSize').textContent = size + ' MB';
+    document.getElementById('modalVideoDate').textContent = date;
+    document.getElementById('videoInfoModal').style.display = 'flex';
+}
+
+function closeVideoInfo() {
+    document.getElementById('videoInfoModal').style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('videoInfoModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeVideoInfo();
+    }
+});
+
+// Cerrar modal con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeVideoInfo();
+    }
+});
+</script>
+{% endblock %}

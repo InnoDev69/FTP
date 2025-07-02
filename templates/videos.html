@@ -5,74 +5,439 @@
 {% block content %}
 <div class="videos-page">
     <div class="page-header">
-        <h1><i class="fas fa-video"></i> Gestión de Videos</h1>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h3>Lista de Videos</h3>
+        <h1><i class="fas fa-video"></i> Carpetas de Grabaciones</h1>
+        <div class="header-actions">
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Buscar videos..." onkeyup="filterVideos()">
+                <input type="text" id="folderSearch" placeholder="Buscar carpetas..." onkeyup="filterFolders()">
                 <i class="fas fa-search"></i>
             </div>
+            <button class="btn btn-secondary" onclick="refreshFolders()">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
         </div>
-        <div class="card-body">
-            {% if videos %}
-                <div class="table-responsive">
-                    <table class="table" id="videosTable">
-                        <thead>
-                            <tr>
-                                <th>Fecha/Hora</th>
-                                <th>Archivo</th>
-                                <th>Ruta</th>
-                                <th>Tamaño</th>
-                                <th>Descargar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for video in videos %}
-                            <tr>
-                                <td>{{ video.datetime[:19] }}</td>
-                                <td>{{ video.path.split('/')[-1] }}</td>
-                                <td>{{ video.path }}</td>
-                                <td>{{ "%.2f"|format(video.size / (1024*1024)) }} MB</td>
-                                <td>
-                                    <a class="btn btn-primary" href="{{ url_for('download_video', filename=video.path) }}">
-                                        <i class="fas fa-download"></i> Descargar
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="stats-row">
+        <div class="stat-item">
+            <i class="fas fa-folder"></i>
+            <div>
+                <span class="stat-number">{{ folders|length }}</span>
+                <span class="stat-label">Carpetas</span>
+            </div>
+        </div>
+        <div class="stat-item">
+            <i class="fas fa-video"></i>
+            <div>
+                <span class="stat-number">{{ folders|sum(attribute='video_count') }}</span>
+                <span class="stat-label">Videos Total</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista de carpetas mejorada -->
+    <div class="folders-container">
+        {% if folders %}
+            <div class="folders-grid" id="foldersGrid">
+                {% for folder in folders %}
+                <div class="folder-card" data-folder-name="{{ folder.real_name|lower }}">
+                    <div class="folder-header">
+                        <div class="folder-icon">
+                            <i class="fas fa-folder"></i>
+                            <span class="video-count">{{ folder.video_count }}</span>
+                        </div>
+                        <div class="folder-actions">
+                            <button class="btn-icon" onclick="toggleEditAlias('{{ folder.real_name }}')" title="Editar apodo">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="folder-content">
+                        <h3 class="folder-name">
+                            <a href="{{ url_for('videos_in_folder', folder=folder.real_name) }}">
+                                {{ folder.alias or folder.real_name }}
+                            </a>
+                        </h3>
+                        {% if folder.alias %}
+                            <p class="folder-real-name">{{ folder.real_name }}</p>
+                        {% endif %}
+                        <div class="folder-stats">
+                            <span class="stat">
+                                <i class="fas fa-play-circle"></i>
+                                {{ folder.video_count }} video{{ 's' if folder.video_count != 1 else '' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de edición de apodo (oculto por defecto) -->
+                    <div class="alias-edit-form" id="edit-{{ folder.real_name }}" style="display: none;">
+                        <div class="form-group">
+                            <label>Apodo de la carpeta:</label>
+                            <input type="text" id="input-{{ folder.real_name }}" 
+                                   value="{{ folder.alias }}" 
+                                   placeholder="Ingresa un apodo descriptivo"
+                                   onkeypress="handleAliasKeyPress(event, '{{ folder.real_name }}')">
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-primary btn-sm" onclick="saveAlias('{{ folder.real_name }}')">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="cancelEditAlias('{{ folder.real_name }}')">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            {% else %}
-                <p class="no-data">No hay videos registrados en la base de datos</p>
-            {% endif %}
-        </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>No hay carpetas de videos</h3>
+                <p>No se encontraron carpetas con grabaciones en el servidor.</p>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<script>
-function filterVideos() {
-    const input = document.getElementById('searchInput');
-    const filter = input.value.toLowerCase();
-    const table = document.getElementById('videosTable');
-    const rows = table.getElementsByTagName('tr');
+<style>
+.videos-page {
+    padding: 0;
+}
 
-    for (let i = 1; i < rows.length; i++) {
-        const cells = rows[i].getElementsByTagName('td');
-        let found = false;
-        
-        for (let j = 0; j < cells.length; j++) {
-            if (cells[j].textContent.toLowerCase().indexOf(filter) > -1) {
-                found = true;
-                break;
-            }
-        }
-        
-        rows[i].style.display = found ? '' : 'none';
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.stats-row {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-item i {
+    font-size: 2rem;
+    color: #667eea;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.folders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.folder-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.folder-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.folder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 1.5rem 1rem;
+}
+
+.folder-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.folder-icon i {
+    font-size: 2.5rem;
+    color: #667eea;
+}
+
+.video-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff6b6b;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.folder-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.folder-content {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.folder-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+}
+
+.folder-name a {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.folder-name a:hover {
+    color: #667eea;
+}
+
+.folder-real-name {
+    color: #888;
+    font-size: 0.9rem;
+    margin: 0 0 1rem 0;
+    font-style: italic;
+}
+
+.folder-stats {
+    display: flex;
+    gap: 1rem;
+}
+
+.folder-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.folder-stats .stat i {
+    color: #667eea;
+}
+
+.alias-edit-form {
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+}
+
+.alias-edit-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.alias-edit-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.alias-edit-form input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.alias-edit-form input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
     }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .stats-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .folders-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function filterFolders() {
+    const searchTerm = document.getElementById('folderSearch').value.toLowerCase();
+    const folders = document.querySelectorAll('.folder-card');
+    
+    folders.forEach(folder => {
+        const folderName = folder.dataset.folderName;
+        const folderText = folder.textContent.toLowerCase();
+        
+        if (folderName.includes(searchTerm) || folderText.includes(searchTerm)) {
+            folder.style.display = 'block';
+        } else {
+            folder.style.display = 'none';
+        }
+    });
+}
+
+function toggleEditAlias(folder) {
+    const editForm = document.getElementById('edit-' + folder);
+    const isVisible = editForm.style.display !== 'none';
+    
+    // Ocultar todos los formularios de edición
+    document.querySelectorAll('.alias-edit-form').forEach(form => {
+        form.style.display = 'none';
+    });
+    
+    if (!isVisible) {
+        editForm.style.display = 'block';
+        document.getElementById('input-' + folder).focus();
+    }
+}
+
+function cancelEditAlias(folder) {
+    document.getElementById('edit-' + folder).style.display = 'none';
+}
+
+function handleAliasKeyPress(event, folder) {
+    if (event.key === 'Enter') {
+        saveAlias(folder);
+    } else if (event.key === 'Escape') {
+        cancelEditAlias(folder);
+    }
+}
+
+function saveAlias(folder) {
+    const input = document.getElementById('input-' + folder);
+    const alias = input.value.trim();
+    
+    // Mostrar loading
+    const saveBtn = event.target;
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    saveBtn.disabled = true;
+    
+    fetch('/set_folder_alias', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'folder=' + encodeURIComponent(folder) + '&alias=' + encodeURIComponent(alias)
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if(data.success) {
+            showNotification('Apodo guardado correctamente', 'success');
+            // Recargar la página para mostrar los cambios
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showNotification('Error al guardar el apodo', 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Error de conexión', 'error');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+function refreshFolders() {
+    location.reload();
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type}`;
+    notification.textContent = message;
+    
+    const container = document.querySelector('.main-content');
+    container.insertBefore(notification, container.firstChild);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
 }
 </script>
 {% endblock %}
