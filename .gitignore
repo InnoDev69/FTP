@@ -20,7 +20,9 @@ yarn-error.log*
 .env*
 ent
 __pycache__
-.logs*
+/logs
+logs.ftp_server.log
+*.log
 dahua_videos
 
 # vercel
