@@ -213,22 +213,23 @@ def videos_in_folder(folder):
     if not folder_path.exists() or not folder_path.is_dir():
         flash("Carpeta no encontrada", "error")
         return redirect(url_for('videos'))
-    # Listar solo archivos de video en esa carpeta (no recursivo)
+    # Buscar archivos de video en la carpeta y subcarpetas (recursivo, case-insensitive)
     videos = []
-    for ext in ('*.mp4', '*.avi', '*.dav'):
-        videos.extend(folder_path.glob(ext))
+    for f in folder_path.rglob('*'):
+        if f.is_file() and f.suffix.lower() in ('.mp4', '.avi', '.dav'):
+            videos.append(f)
     videos_info = [{
         "name": v.name,
         "size": v.stat().st_size,
         "mtime": datetime.fromtimestamp(v.stat().st_mtime),
-        "path": str((folder_path / v.name).relative_to(VIDEO_DIR))
+        "path": str(v.relative_to(VIDEO_DIR))
     } for v in videos]
     # Ordenar por fecha descendente
     videos_info.sort(key=lambda x: x["mtime"], reverse=True)
     return render_template('videos_in_folder.html',
                            folder=folder,
                            alias=aliases.get(folder, ""),
-                           videos=videos_info)    
+                           videos=videos_info)  
 
 @app.route('/download/<path:filename>')
 @login_required
