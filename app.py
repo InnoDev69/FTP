@@ -63,6 +63,8 @@ ATTEMPS_MAX = config["ATTEMPS_MAX"]
 CHANGELOG_FILE = Path(config["CHANGELOG_FILE"])
 LAST_COMMIT_FILE = Path(config["LAST_COMMIT_FILE"])
 
+SERVER_START_TIME = time.time()
+
 def format_uptime(seconds):
     seconds = int(seconds)
     days, seconds = divmod(seconds, 86400)
