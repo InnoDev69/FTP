@@ -211,3 +211,4 @@ pyrightconfig.json
 
 logs/ftp_server.log
 FTP.code-workspace
+config.json

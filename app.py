@@ -25,19 +25,43 @@ import glob
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'  # Cambiar en producción
 
-# Configuración
-FTP_HOST = 'localhost'
-FTP_PORT = 60000
-VIDEO_DIR = Path('dahua_videos')
-LOG_DIR = Path('logs')
-ALIAS_FILE = VIDEO_DIR / "folder_aliases.json" 
-ATTEMPS_LOGGING = 0
-ATTEMPS_MAX = 5
+# Configuración por defecto
+DEFAULT_CONFIG = {
+    "FTP_HOST": "localhost",
+    "FTP_PORT": 60000,
+    "VIDEO_DIR": "dahua_videos",
+    "LOG_DIR": "logs",
+    "ALIAS_FILE": "dahua_videos/folder_aliases.json",
+    "ATTEMPS_LOGGING": 0,
+    "ATTEMPS_MAX": 5,
+    "CHANGELOG_FILE": "changelog.json",
+    "LAST_COMMIT_FILE": "last_commit.txt"
+}
 
-SERVER_START_TIME = time.time()
+CONFIG_FILE = Path("config.json")
 
-CHANGELOG_FILE = Path('changelog.json')
-LAST_COMMIT_FILE = Path('last_commit.txt')
+def load_config():
+    if not CONFIG_FILE.exists():
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_CONFIG, f, indent=2)
+        config = DEFAULT_CONFIG.copy()
+    else:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    return config
+
+config = load_config()
+
+# Usar la configuración cargada
+FTP_HOST = config["FTP_HOST"]
+FTP_PORT = config["FTP_PORT"]
+VIDEO_DIR = Path(config["VIDEO_DIR"])
+LOG_DIR = Path(config["LOG_DIR"])
+ALIAS_FILE = Path(config["ALIAS_FILE"])
+ATTEMPS_LOGGING = config["ATTEMPS_LOGGING"]
+ATTEMPS_MAX = config["ATTEMPS_MAX"]
+CHANGELOG_FILE = Path(config["CHANGELOG_FILE"])
+LAST_COMMIT_FILE = Path(config["LAST_COMMIT_FILE"])
 
 def format_uptime(seconds):
     seconds = int(seconds)
