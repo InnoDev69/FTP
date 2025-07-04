@@ -1,25 +1,181 @@
 {% extends "base.html" %}
 {% block title %}Preparando video...{% endblock %}
 {% block content %}
-<div class="card" style="text-align:center;">
-    <div class="card-body">
-        <h3><i class="fas fa-spinner fa-spin"></i> Preparando video para reproducción...</h3>
-        <p>Por favor espera unos segundos mientras convertimos el archivo.</p>
+<div class="preparing-page">
+    <div class="preparing-container">
+        <div class="preparing-content">
+            <div class="preparing-icon">
+                <i class="fas fa-cog fa-spin"></i>
+            </div>
+            <h2>Preparando video para reproducción</h2>
+            <p>Estamos convirtiendo el archivo para optimizar la reproducción en tu navegador.</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <div class="preparing-details">
+                <span class="detail-item">
+                    <i class="fas fa-file-video"></i>
+                    Convirtiendo formato DAV a MP4
+                </span>
+                <span class="detail-item">
+                    <i class="fas fa-compress"></i>
+                    Optimizando para web
+                </span>
+                <span class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    Esto puede tomar unos momentos
+                </span>
+            </div>
+        </div>
     </div>
 </div>
-<script>
-    // Poll cada 2 segundos para ver si el video está listo
-    function checkReady() {
-        fetch("{{ url_for('check_temp_video', temp_filename=temp_filename) }}")
-            .then(resp => resp.json())
-            .then(data => {
-                if (data.ready) {
-                    window.location.href = "{{ url_for('player_temp', temp_filename=temp_filename) }}";
-                } else {
-                    setTimeout(checkReady, 2000);
-                }
-            });
+
+<style>
+.preparing-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 2rem;
+}
+
+.preparing-container {
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: var(--blur-md);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    padding: 3rem;
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+}
+
+.preparing-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.preparing-icon {
+    font-size: 4rem;
+    color: var(--accent-secondary);
+    margin-bottom: 1rem;
+}
+
+.preparing-container h2 {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin: 0;
+    letter-spacing: -0.025em;
+}
+
+.preparing-container p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary));
+    border-radius: 3px;
+    animation: progressAnimation 2s ease-in-out infinite;
+}
+
+@keyframes progressAnimation {
+    0% {
+        width: 0%;
+        transform: translateX(0);
     }
-    checkReady();
+    50% {
+        width: 70%;
+        transform: translateX(0);
+    }
+    100% {
+        width: 100%;
+        transform: translateX(0);
+    }
+}
+
+.preparing-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    justify-content: flex-start;
+}
+
+.detail-item i {
+    color: var(--accent-muted);
+    width: 16px;
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    .preparing-container {
+        padding: 2rem;
+        margin: 0 1rem;
+    }
+    
+    .preparing-icon {
+        font-size: 3rem;
+    }
+    
+    .preparing-container h2 {
+        font-size: 1.25rem;
+    }
+}
+</style>
+
+<script>
+// Poll cada 2 segundos para ver si el video está listo
+function checkReady() {
+    fetch("{{ url_for('check_temp_video', temp_filename=temp_filename) }}")
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.ready) {
+                window.location.href = "{{ url_for('player_temp', temp_filename=temp_filename) }}";
+            } else {
+                setTimeout(checkReady, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking video status:', error);
+            setTimeout(checkReady, 3000); // Reintentar en 3 segundos si hay error
+        });
+}
+
+// Iniciar verificación
+checkReady();
+
+// Mostrar mensaje de paciencia después de 10 segundos
+setTimeout(() => {
+    const details = document.querySelector('.preparing-details');
+    const patience = document.createElement('span');
+    patience.className = 'detail-item';
+    patience.innerHTML = '<i class="fas fa-info-circle"></i> Los archivos grandes pueden tomar más tiempo';
+    patience.style.color = 'var(--warning)';
+    details.appendChild(patience);
+}, 10000);
 </script>
 {% endblock %}

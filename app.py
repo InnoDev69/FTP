@@ -143,22 +143,22 @@ def get_server_stats():
             'disk_usage_sys': psutil.disk_usage('/').percent,
             'net_usage': 0  # Se calcula abajo
         }
-        
+
         # Verificar si el directorio de videos existe
         if VIDEO_DIR.exists():
             # Contar archivos de video
             video_files = list(VIDEO_DIR.rglob("*.avi")) + list(VIDEO_DIR.rglob("*.mp4")) + list(VIDEO_DIR.rglob("*.dav"))
             stats['video_count'] = len(video_files)
-            
+
             # Calcular tamaño total
             total_size = sum(f.stat().st_size for f in video_files if f.exists())
             stats['total_size_gb'] = round(total_size / (1024**3), 2)
-            
+
             # Último archivo subido
             if video_files:
                 latest_file = max(video_files, key=lambda f: f.stat().st_mtime)
                 stats['last_upload'] = datetime.fromtimestamp(latest_file.stat().st_mtime).strftime('%Y/%m/%d %H:%M:%S')
-        
+
         # Verificar estado del servidor FTP
         try:
             ftp = ftplib.FTP()
@@ -166,14 +166,14 @@ def get_server_stats():
             ftp.login(session['ftp_user'], session['ftp_pass'])
             stats['status'] = 'online'
             ftp.quit()
-        except:
+        except Exception:
             stats['status'] = 'offline'
-        
+
         # Uso del disco
         if VIDEO_DIR.exists():
             disk_usage = psutil.disk_usage(str(VIDEO_DIR))
             stats['disk_usage'] = round((disk_usage.used / disk_usage.total) * 100, 1)
-        
+
         # Uso de red (bytes enviados+recibidos desde arranque)
         net = psutil.net_io_counters()
         stats['net_usage'] = round((net.bytes_sent + net.bytes_recv) / (1024*1024), 2)  # MB
@@ -329,6 +329,21 @@ def videos():
             "video_count": len(list(folder.rglob("*.mp4"))) + len(list(folder.rglob("*.avi"))) + len(list(folder.rglob("*.dav")))
         })
     return render_template('videos.html', folders=folders_info)
+
+@app.route('/api/cpu_usage')
+def api_cpu_usage():
+    """API para obtener uso de CPU"""
+    try:
+        cpu_usage = psutil.cpu_percent(interval=0.2)
+        return jsonify({'cpu_usage': cpu_usage})
+    except Exception as e:
+        print(f"Error obteniendo uso de CPU: {e}")
+        return jsonify({'cpu_usage': 0})
+    
+@app.route('/api/time')
+def api_time():
+    """API para obtener el tiempo de uso del servidor"""
+    return jsonify({'uptime': format_uptime(time.time() - SERVER_START_TIME)})
 
 @app.route('/api/stats')
 @login_required
@@ -531,6 +546,60 @@ def convert_dav_to_mp4(dav_path, mp4_path):
     finally:
         if os.path.exists(lock_path):
             os.remove(lock_path)
+            
+@app.route('/configuration')
+@login_required
+def configuration():
+    """Página de configuración"""
+    current_config = load_config()
+    return render_template('configuration.html', config=current_config)
+
+@app.route('/save_configuration', methods=['POST'])
+@login_required
+def save_configuration():
+    """Guardar configuración"""
+    try:
+        new_config = {
+            'FTP_HOST': request.form.get('ftp_host', 'localhost'),
+            'FTP_PORT': int(request.form.get('ftp_port', 60000)),
+            'VIDEO_DIR': request.form.get('video_dir', 'dahua_videos'),
+            'LOG_DIR': request.form.get('log_dir', 'logs'),
+            'ALIAS_FILE': request.form.get('alias_file', 'dahua_videos/folder_aliases.json'),
+            'ATTEMPS_LOGGING': int(request.form.get('attemps_logging', 0)),
+            'ATTEMPS_MAX': int(request.form.get('attemps_max', 5)),
+            'CHANGELOG_FILE': request.form.get('changelog_file', 'changelog.json'),
+            'LAST_COMMIT_FILE': request.form.get('last_commit_file', 'last_commit.txt'),
+            'KEEP_DAYS': int(request.form.get('keep_days', 7)),
+            'MAX_CONNECTIONS': int(request.form.get('max_connections', 256)),
+            'MAX_CONNECTIONS_PER_IP': int(request.form.get('max_connections_per_ip', 5)),
+            'BLOCK_DURATION': int(request.form.get('block_duration', 300)),
+            'WEB_PORT': int(request.form.get('web_port', 5000)),
+            'WEB_HOST': request.form.get('web_host', '0.0.0.0')
+        }
+        
+        # Guardar configuración
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(new_config, f, indent=2, ensure_ascii=False)
+        
+        flash('Configuración guardada correctamente. Reinicia el servidor para aplicar los cambios.', 'success')
+        
+    except Exception as e:
+        flash(f'Error al guardar la configuración: {str(e)}', 'error')
+    
+    return redirect(url_for('configuration'))
+
+@app.route('/reset_configuration', methods=['POST'])
+@login_required
+def reset_configuration():
+    """Resetear configuración a valores por defecto"""
+    try:
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(DEFAULT_CONFIG, f, indent=2, ensure_ascii=False)
+        flash('Configuración restablecida a valores por defecto', 'success')
+    except Exception as e:
+        flash(f'Error al restablecer la configuración: {str(e)}', 'error')
+    
+    return redirect(url_for('configuration'))
 
 @app.route('/play/<path:filename>')
 @login_required

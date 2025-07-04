@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Videos en {{ alias or folder }}{% endblock %}
+{% block title %}{{ alias or folder }} - Videos{% endblock %}
 {% block content %}
 <div class="videos-page">
     <div class="page-header">
@@ -13,7 +13,7 @@
             </h1>
             <div class="breadcrumb">
                 <a href="{{ url_for('videos') }}">
-                    <i class="fas fa-video"></i> Carpetas
+                    <i class="fas fa-video"></i> Biblioteca
                 </a>
                 <i class="fas fa-chevron-right"></i>
                 <span>{{ alias or folder }}</span>
@@ -40,27 +40,20 @@
 
     <!-- Estadísticas de la carpeta -->
     {% if videos %}
-    <div class="folder-stats-card">
-        <div class="stats-grid">
-            <div class="stat-item">
+    <div class="folder-stats">
+        <div class="stats-grid-small">
+            <div class="stat-item-small">
                 <i class="fas fa-video"></i>
                 <div>
-                    <span class="stat-number">{{ videos|length }}</span>
-                    <span class="stat-label">Videos</span>
+                    <span class="stat-number-small">{{ videos|length }}</span>
+                    <span class="stat-label-small">Videos</span>
                 </div>
             </div>
-            <div class="stat-item">
-                <i class="fas fa-hdd"></i>
+            <div class="stat-item-small">
+                <i class="fas fa-database"></i>
                 <div>
-                    <span class="stat-number">{{ "%.1f"|format((videos|sum(attribute='size')) / (1024*1024*1024)) }} GB</span>
-                    <span class="stat-label">Tamaño Total</span>
-                </div>
-            </div>
-            <div class="stat-item">
-                <i class="fas fa-clock"></i>
-                <div>
-                    <span class="stat-number">{{ videos|length }}</span>
-                    <span class="stat-label">Archivos</span>
+                    <span class="stat-number-small">{{ "%.1f"|format((videos|sum(attribute='size')) / (1024*1024*1024)) }} GB</span>
+                    <span class="stat-label-small">Tamaño Total</span>
                 </div>
             </div>
         </div>
@@ -70,44 +63,42 @@
     <!-- Contenedor de videos -->
     <div class="videos-container">
         {% if videos %}
-            <!-- Vista en cuadrícula (por defecto) -->
+            <!-- Vista en cuadrícula -->
             <div class="videos-grid" id="videosGrid">
                 {% for v in videos %}
                 <div class="video-card" data-video-name="{{ v.name|lower }}">
                     <div class="video-thumbnail">
-                        <i class="fas fa-play-circle"></i>
+                        <div class="play-overlay">
+                            <i class="fas fa-play"></i>
+                        </div>
                         <div class="video-duration">
                             <i class="fas fa-clock"></i>
-                            <span>Video</span>
+                            <span>{{ "%.1f"|format(v.size / (1024*1024)) }} MB</span>
                         </div>
                     </div>
                     
                     <div class="video-info">
                         <h3 class="video-title" title="{{ v.name }}">{{ v.name }}</h3>
                         <div class="video-meta">
-                            <span class="video-size">
-                                <i class="fas fa-hdd"></i>
-                                {{ "%.1f"|format(v.size / (1024*1024)) }} MB
-                            </span>
                             <span class="video-date">
                                 <i class="fas fa-calendar"></i>
                                 {{ v.mtime.strftime('%d/%m/%Y') }}
                             </span>
-                        </div>
-                        <div class="video-time">
-                            <i class="fas fa-clock"></i>
-                            {{ v.mtime.strftime('%H:%M') }}
+                            <span class="video-time">
+                                <i class="fas fa-clock"></i>
+                                {{ v.mtime.strftime('%H:%M') }}
+                            </span>
                         </div>
                     </div>
                     
                     <div class="video-actions">
-                        <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir video">
+                        <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
                             <i class="fas fa-play"></i>
                         </a>
-                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar video">
+                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
                             <i class="fas fa-download"></i>
                         </a>
-                        <button class="btn btn-info btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Información del video">
+                        <button class="btn btn-outline btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Información">
                             <i class="fas fa-info"></i>
                         </button>
                     </div>
@@ -115,7 +106,7 @@
                 {% endfor %}
             </div>
 
-            <!-- Vista en lista (oculta por defecto) -->
+            <!-- Vista en lista -->
             <div class="videos-list" id="videosList" style="display: none;">
                 <div class="list-header">
                     <div class="col-name">Nombre</div>
@@ -143,7 +134,7 @@
                         <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
                             <i class="fas fa-download"></i>
                         </a>
-                        <button class="btn btn-info btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Info">
+                        <button class="btn btn-outline btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Info">
                             <i class="fas fa-info"></i>
                         </button>
                     </div>
@@ -154,10 +145,10 @@
             <div class="empty-state">
                 <i class="fas fa-video-slash"></i>
                 <div class="empty-message">
-                    <h3>No hay videos en esta carpeta</h3>
-                    <p>Esta carpeta no contiene archivos de video o están siendo procesados.</p>
+                    <h3>Sin videos en esta carpeta</h3>
+                    <p>Esta carpeta no contiene archivos de video o están siendo procesados</p>
                 </div>
-                <button class="btn btn-primary btn-sm update-btn" onclick="location.reload()">
+                <button class="btn btn-secondary" onclick="location.reload()">
                     <i class="fas fa-sync-alt"></i> Actualizar
                 </button>
             </div>
@@ -165,12 +156,15 @@
     </div>
 </div>
 
-<!-- Modal de información del video -->
+<!-- Modal de información -->
 <div class="modal" id="videoInfoModal" style="display: none;">
+    <div class="modal-backdrop" onclick="closeVideoInfo()"></div>
     <div class="modal-content">
         <div class="modal-header">
             <h3><i class="fas fa-info-circle"></i> Información del Video</h3>
-            <button class="btn-close" onclick="closeVideoInfo()">&times;</button>
+            <button class="btn-close" onclick="closeVideoInfo()">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <div class="modal-body">
             <div class="info-row">
@@ -182,7 +176,7 @@
                 <span id="modalVideoSize"></span>
             </div>
             <div class="info-row">
-                <strong>Fecha de creación:</strong>
+                <strong>Fecha:</strong>
                 <span id="modalVideoDate"></span>
             </div>
         </div>
@@ -190,26 +184,6 @@
 </div>
 
 <style>
-
-.update-btn {
-    margin-top: 2rem;
-    font-size: 0.85rem;
-    padding: 0.25rem 0.8rem;
-    height: 2.5rem;
-    width: 9rem;
-    min-width: 0;
-    min-height: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4em;
-}
-.update-btn i.fas.fa-sync-alt {
-    font-size: 1.5em;
-    margin-right: 0.5em;
-    margin-top: 0.7em;
-    vertical-align: middle;
-    line-height: 1;
-}
 .videos-page {
     padding: 0;
 }
@@ -220,148 +194,185 @@
 
 .folder-real-name {
     font-size: 1rem;
-    color: #888;
-    font-weight: normal;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: 0.5rem;
 }
 
 .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .breadcrumb a {
-    color: #667eea;
+    color: var(--accent-secondary);
     text-decoration: none;
+    transition: color 0.2s ease;
 }
 
 .breadcrumb a:hover {
-    text-decoration: underline;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
+    color: var(--text-primary);
 }
 
 .view-toggle {
     display: flex;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
     overflow: hidden;
+    background: var(--bg-tertiary);
 }
 
 .view-toggle .btn-icon {
     border: none;
-    background: white;
-    padding: 0.5rem 0.75rem;
+    background: transparent;
+    padding: 0.75rem;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
+    border-radius: 0;
 }
 
 .view-toggle .btn-icon.active {
-    background: #667eea;
-    color: white;
+    background: var(--accent-primary);
+    color: var(--bg-primary);
 }
 
-.folder-stats-card {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
+.folder-stats {
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    margin-bottom: 3rem;
 }
 
-.stats-grid {
+.stats-grid-small {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 2rem;
 }
 
-.stat-item {
+.stat-item-small {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
-.stat-item i {
-    font-size: 2rem;
-    color: #667eea;
+.stat-item-small i {
+    font-size: 1.75rem;
+    color: var(--accent-secondary);
+    opacity: 0.8;
 }
 
-.stat-number {
+.stat-number-small {
     font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
+    font-weight: 700;
+    color: var(--text-primary);
     display: block;
+    letter-spacing: -0.025em;
 }
 
-.stat-label {
-    font-size: 0.9rem;
-    color: #666;
+.stat-label-small {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
 /* Vista en cuadrícula */
 .videos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
 }
 
 .video-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.video-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-muted), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .video-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-primary);
+}
+
+.video-card:hover::before {
+    opacity: 1;
 }
 
 .video-thumbnail {
     position: relative;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    height: 150px;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    height: 180px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    overflow: hidden;
 }
 
-.video-thumbnail i {
-    font-size: 3rem;
-    opacity: 0.8;
+.play-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    color: var(--bg-primary);
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.video-card:hover .play-overlay {
+    transform: scale(1.1);
+    background: var(--accent-primary);
 }
 
 .video-duration {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: var(--blur-sm);
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
     font-size: 0.8rem;
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    font-weight: 500;
 }
 
 .video-info {
-    padding: 1rem;
+    padding: 1.5rem;
 }
 
 .video-title {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: #333;
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -370,38 +381,37 @@
 .video-meta {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: #666;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }
 
 .video-meta span {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
 }
 
-.video-time {
-    font-size: 0.8rem;
-    color: #888;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+.video-meta i {
+    color: var(--accent-muted);
+    opacity: 0.8;
 }
 
 .video-actions {
-    padding: 1rem;
-    border-top: 1px solid #f0f0f0;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-subtle);
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     justify-content: center;
+    background: rgba(17, 17, 17, 0.3);
 }
 
 /* Vista en lista */
 .videos-list {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
     overflow: hidden;
 }
 
@@ -409,37 +419,51 @@
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;
     gap: 1rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    font-weight: bold;
-    color: #333;
-    border-bottom: 1px solid #eee;
+    padding: 1.5rem;
+    background: rgba(17, 17, 17, 0.5);
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .video-row {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;
     gap: 1rem;
-    padding: 1rem;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
     align-items: center;
-    transition: background-color 0.3s;
+    transition: background-color 0.2s ease;
 }
 
 .video-row:hover {
-    background-color: #f8f9fa;
+    background: var(--bg-hover);
+}
+
+.video-row:last-child {
+    border-bottom: none;
 }
 
 .col-name {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+}
+
+.col-name i {
+    color: var(--accent-muted);
+    opacity: 0.8;
 }
 
 .video-name {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 .date-info {
@@ -450,7 +474,7 @@
 
 .date-info .time {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .col-actions {
@@ -465,89 +489,96 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
 }
 
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: var(--blur-md);
+}
+
 .modal-content {
-    background: white;
-    border-radius: 10px;
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: var(--blur-md);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
     max-width: 500px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
+    position: relative;
+    z-index: 1001;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid #eee;
+    padding: 2rem;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .modal-header h3 {
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 .btn-close {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     cursor: pointer;
-    color: #666;
+    color: var(--text-muted);
     padding: 0.5rem;
-    border-radius: 50%;
-    transition: all 0.3s;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
 }
 
 .btn-close:hover {
-    background: #f0f0f0;
-    color: #333;
+    background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 .modal-body {
-    padding: 1.5rem;
+    padding: 2rem;
 }
 
 .info-row {
     display: flex;
     justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .info-row:last-child {
     border-bottom: none;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #666;
+.info-row strong {
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
-.empty-state i {
-    font-size: 4rem;
-    color: #ddd;
-    margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-    margin-bottom: 0.5rem;
-    color: #333;
+.info-row span {
+    color: var(--text-primary);
 }
 
 @media (max-width: 768px) {
     .page-header {
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.5rem;
     }
     
     .header-actions {
@@ -559,7 +590,7 @@
         width: 100%;
     }
     
-    .stats-grid {
+    .stats-grid-small {
         grid-template-columns: 1fr;
     }
     
@@ -579,18 +610,28 @@
     
     .video-row {
         display: block;
-        padding: 1rem;
+        padding: 1.5rem;
     }
     
     .col-name,
     .col-size,
     .col-date,
     .col-actions {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     
     .col-actions {
         justify-content: center;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+        width: calc(100% - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body {
+        padding: 1.5rem;
     }
 }
 </style>
@@ -649,13 +690,6 @@ function showVideoInfo(name, size, date) {
 function closeVideoInfo() {
     document.getElementById('videoInfoModal').style.display = 'none';
 }
-
-// Cerrar modal al hacer clic fuera
-document.getElementById('videoInfoModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeVideoInfo();
-    }
-});
 
 // Cerrar modal con Escape
 document.addEventListener('keydown', function(e) {

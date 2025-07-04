@@ -144,10 +144,6 @@ setInterval(function() {
             document.querySelectorAll('.stat-card')[3].querySelector('h3').textContent = data.last_upload;
             // Conexiones
             document.querySelectorAll('.stat-card')[4].querySelector('h3').textContent = data.connections;
-            // Uptime
-            document.querySelectorAll('.stat-card')[5].querySelector('h3').textContent = data.uptime;
-            // Uso de CPU
-            document.getElementById('cpu-usage').textContent = data.cpu_usage + '%';
             // Uso de Memoria
             document.getElementById('mem-usage').textContent = data.mem_usage + '%';
             // Uso de Disco (sistema)
@@ -157,5 +153,25 @@ setInterval(function() {
         })
         .catch(error => console.error('Error:', error));
 }, 5000);
+</script>
+<script>
+    setInterval(function() {
+        fetch('/api/cpu_usage')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('cpu-usage').textContent = data.cpu_usage + '%';
+            })
+            .catch(error => console.error('Error:', error));
+    }, 2000);
+</script>
+<script>
+    setInterval(function() {
+        fetch('/api/time')
+            .then(response => response.json())
+            .then(data => {
+                document.querySelectorAll('.stat-card')[5].querySelector('h3').textContent = data.uptime;
+            })
+            .catch(error => console.error('Error:', error));
+    }, 1000);
 </script>
 {% endblock %}

@@ -1,25 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Admin FTP{% endblock %}
+{% block title %}Acceso - Admin FTP{% endblock %}
 
 {% block content %}
 <div class="login-container">
     <div class="login-card">
         <div class="login-header">
-            <i class="fas fa-lock"></i>
+            <i class="fas fa-shield-alt"></i>
             <h2>Acceso Administrativo</h2>
-            <p>Cliente FTP Dahua</p>
+            <p>Sistema de gestión FTP Dahua</p>
         </div>
         
         <form method="POST" class="login-form">
             <div class="form-group">
-                <label for="username">Usuario:</label>
-                <input type="text" id="username" name="username" required>
+                <label for="username">Usuario</label>
+                <input type="text" id="username" name="username" placeholder="Ingresa tu usuario" required>
             </div>
             
             <div class="form-group">
-                <label for="password">Contraseña:</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" placeholder="Ingresa tu contraseña" required>
             </div>
             
             <button type="submit" class="btn btn-primary">
@@ -28,7 +28,7 @@
         </form>
         
         <div class="login-info">
-            <small>Usuario por defecto: admin / admin123</small>
+            <small>Credenciales por defecto: admin / admin123</small>
         </div>
     </div>
 </div>

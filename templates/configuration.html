@@ -1,0 +1,604 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - Admin FTP{% endblock %}
+
+{% block content %}
+<div class="config-page">
+    <div class="page-header">
+        <h1><i class="fas fa-cog"></i> Configuración del Sistema</h1>
+        <div class="header-actions">
+            <form method="POST" action="{{ url_for('reset_configuration') }}" style="display: inline;">
+                <button type="submit" class="btn btn-outline" onclick="return confirm('¿Estás seguro de restablecer la configuración?')">
+                    <i class="fas fa-undo"></i> Restablecer
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('save_configuration') }}" class="config-form">
+        <div class="config-sections">
+            <!-- Configuración del Servidor FTP -->
+            <div class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="section-info">
+                        <h2>Servidor FTP</h2>
+                        <p>Configuración del servidor FTP para recibir videos del DVR</p>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="ftp_host">
+                                <i class="fas fa-network-wired"></i>
+                                Host/IP del Servidor
+                            </label>
+                            <input type="text" id="ftp_host" name="ftp_host" value="{{ config.FTP_HOST }}" required>
+                            <small>Dirección IP donde escuchará el servidor FTP</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="ftp_port">
+                                <i class="fas fa-plug"></i>
+                                Puerto FTP
+                            </label>
+                            <input type="number" id="ftp_port" name="ftp_port" value="{{ config.FTP_PORT }}" min="1" max="65535" required>
+                            <small>Puerto para conexiones FTP (por defecto: 60000)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="max_connections">
+                                <i class="fas fa-users"></i>
+                                Conexiones Máximas
+                            </label>
+                            <input type="number" id="max_connections" name="max_connections" value="{{ config.get('MAX_CONNECTIONS', 256) }}" min="1" max="1000">
+                            <small>Número máximo de conexiones simultáneas</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="max_connections_per_ip">
+                                <i class="fas fa-user-friends"></i>
+                                Conexiones por IP
+                            </label>
+                            <input type="number" id="max_connections_per_ip" name="max_connections_per_ip" value="{{ config.get('MAX_CONNECTIONS_PER_IP', 5) }}" min="1" max="50">
+                            <small>Conexiones máximas por dirección IP</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración de Seguridad -->
+            <div class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="section-info">
+                        <h2>Seguridad</h2>
+                        <p>Configuración de seguridad y bloqueo automático de IPs</p>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="attemps_max">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Intentos Máximos
+                            </label>
+                            <input type="number" id="attemps_max" name="attemps_max" value="{{ config.ATTEMPS_MAX }}" min="1" max="10">
+                            <small>Intentos fallidos antes de bloquear una IP</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="block_duration">
+                                <i class="fas fa-clock"></i>
+                                Duración del Bloqueo
+                            </label>
+                            <input type="number" id="block_duration" name="block_duration" value="{{ config.get('BLOCK_DURATION', 300) }}" min="60" max="3600">
+                            <small>Tiempo de bloqueo en segundos (300 = 5 minutos)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="attemps_logging">
+                                <i class="fas fa-file-alt"></i>
+                                Registro de Intentos
+                            </label>
+                            <select id="attemps_logging" name="attemps_logging">
+                                <option value="0" {{ 'selected' if config.ATTEMPS_LOGGING == 0 else '' }}>Deshabilitado</option>
+                                <option value="1" {{ 'selected' if config.ATTEMPS_LOGGING == 1 else '' }}>Solo errores</option>
+                                <option value="2" {{ 'selected' if config.ATTEMPS_LOGGING == 2 else '' }}>Todos los intentos</option>
+                            </select>
+                            <small>Nivel de registro de intentos de conexión</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración de Archivos -->
+            <div class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-folder"></i>
+                    </div>
+                    <div class="section-info">
+                        <h2>Gestión de Archivos</h2>
+                        <p>Configuración de directorios y retención de archivos</p>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="video_dir">
+                                <i class="fas fa-video"></i>
+                                Directorio de Videos
+                            </label>
+                            <input type="text" id="video_dir" name="video_dir" value="{{ config.VIDEO_DIR }}" required>
+                            <small>Carpeta donde se almacenan los videos recibidos</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="log_dir">
+                                <i class="fas fa-file-alt"></i>
+                                Directorio de Logs
+                            </label>
+                            <input type="text" id="log_dir" name="log_dir" value="{{ config.LOG_DIR }}" required>
+                            <small>Carpeta donde se guardan los archivos de log</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="keep_days">
+                                <i class="fas fa-calendar-times"></i>
+                                Días de Retención
+                            </label>
+                            <input type="number" id="keep_days" name="keep_days" value="{{ config.get('KEEP_DAYS', 7) }}" min="1" max="365">
+                            <small>Días para mantener los archivos antes de eliminarlos</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="alias_file">
+                                <i class="fas fa-tags"></i>
+                                Archivo de Alias
+                            </label>
+                            <input type="text" id="alias_file" name="alias_file" value="{{ config.ALIAS_FILE }}" required>
+                            <small>Archivo JSON para almacenar alias de carpetas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración de la Interfaz Web -->
+            <div class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="section-info">
+                        <h2>Interfaz Web</h2>
+                        <p>Configuración del servidor web de administración</p>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="web_host">
+                                <i class="fas fa-desktop"></i>
+                                Host Web
+                            </label>
+                            <input type="text" id="web_host" name="web_host" value="{{ config.get('WEB_HOST', '0.0.0.0') }}" required>
+                            <small>Dirección IP para la interfaz web</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="web_port">
+                                <i class="fas fa-ethernet"></i>
+                                Puerto Web
+                            </label>
+                            <input type="number" id="web_port" name="web_port" value="{{ config.get('WEB_PORT', 5000) }}" min="1" max="65535" required>
+                            <small>Puerto para la interfaz web (por defecto: 5000)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración Avanzada -->
+            <div class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <div class="section-info">
+                        <h2>Configuración Avanzada</h2>
+                        <p>Configuraciones adicionales del sistema</p>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="changelog_file">
+                                <i class="fas fa-history"></i>
+                                Archivo de Changelog
+                            </label>
+                            <input type="text" id="changelog_file" name="changelog_file" value="{{ config.CHANGELOG_FILE }}" required>
+                            <small>Archivo para registrar cambios del sistema</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="last_commit_file">
+                                <i class="fas fa-code-branch"></i>
+                                Archivo de Último Commit
+                            </label>
+                            <input type="text" id="last_commit_file" name="last_commit_file" value="{{ config.LAST_COMMIT_FILE }}" required>
+                            <small>Archivo para rastrear actualizaciones</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Guardar Configuración
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+.config-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.config-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    margin-bottom: 3rem;
+}
+
+.config-section {
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.config-section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-muted), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.config-section:hover {
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.config-section:hover::before {
+    opacity: 1;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    background: rgba(17, 17, 17, 0.5);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.section-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+    color: var(--accent-secondary);
+    flex-shrink: 0;
+}
+
+.section-info h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.4rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+.section-info p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.section-content {
+    padding: 2rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.form-group label i {
+    color: var(--accent-muted);
+    width: 16px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.form-group input,
+.form-group select {
+    padding: 1rem 1.25rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--accent-muted);
+    background: var(--bg-elevated);
+    box-shadow: 0 0 0 3px rgba(160, 160, 160, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-group input::placeholder {
+    color: var(--text-disabled);
+}
+
+.form-group small {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding-left: 0.25rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: flex-end;
+    padding: 2rem;
+    background: rgba(17, 17, 17, 0.5);
+    border-top: 1px solid var(--border-subtle);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+/* Animaciones de entrada */
+.config-section {
+    animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.config-section:nth-child(1) { animation-delay: 0.1s; }
+.config-section:nth-child(2) { animation-delay: 0.2s; }
+.config-section:nth-child(3) { animation-delay: 0.3s; }
+.config-section:nth-child(4) { animation-delay: 0.4s; }
+.config-section:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Estados de validación */
+.form-group input:valid {
+    border-color: var(--success);
+}
+
+.form-group input:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--error);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .section-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .section-content {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .config-page {
+        margin: 0 -1rem;
+    }
+    
+    .config-section {
+        border-radius: var(--radius-lg);
+        margin: 0 1rem;
+    }
+    
+    .section-header,
+    .section-content,
+    .form-actions {
+        padding: 1.5rem;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 0.875rem 1rem;
+    }
+}
+
+/* Efectos hover mejorados */
+.form-group input:hover:not(:focus) {
+    border-color: var(--border-primary);
+    background: rgba(34, 34, 34, 0.8);
+}
+
+.form-group select:hover:not(:focus) {
+    border-color: var(--border-primary);
+    background: rgba(34, 34, 34, 0.8);
+}
+
+/* Indicadores de estado */
+.form-group input[type="number"]::-webkit-outer-spin-button,
+.form-group input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.form-group input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Mejoras de accesibilidad */
+.form-group label:hover {
+    color: var(--text-primary);
+}
+
+.form-group label:hover i {
+    color: var(--accent-secondary);
+    transform: scale(1.1);
+}
+</style>
+
+<script>
+// Validación en tiempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('input[type="number"]');
+    
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const min = parseInt(this.getAttribute('min'));
+            const max = parseInt(this.getAttribute('max'));
+            const value = parseInt(this.value);
+            
+            if (value < min || value > max) {
+                this.style.borderColor = 'var(--error)';
+            } else {
+                this.style.borderColor = 'var(--success)';
+            }
+        });
+    });
+    
+    // Mostrar notificación de cambios no guardados
+    const form = document.querySelector('.config-form');
+    const inputs_all = form.querySelectorAll('input, select');
+    let hasChanges = false;
+    
+    inputs_all.forEach(input => {
+        const originalValue = input.value;
+        
+        input.addEventListener('input', function() {
+            if (this.value !== originalValue) {
+                hasChanges = true;
+            }
+        });
+    });
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (hasChanges) {
+            e.preventDefault();
+            e.returnValue = '¿Estás seguro de salir sin guardar los cambios?';
+        }
+    });
+    
+    // Resetear flag al enviar formulario
+    form.addEventListener('submit', function() {
+        hasChanges = false;
+    });
+});
+
+// Función para mostrar notificaciones
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type}`;
+    notification.textContent = message;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '10000';
+    notification.style.minWidth = '300px';
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 4000);
+}
+
+// Validación de puertos
+document.getElementById('ftp_port').addEventListener('input', function() {
+    const port = parseInt(this.value);
+    if (port < 1024 && port !== 21) {
+        showNotification('Los puertos menores a 1024 requieren permisos de administrador', 'warning');
+    }
+});
+
+document.getElementById('web_port').addEventListener('input', function() {
+    const port = parseInt(this.value);
+    if (port < 1024 && port !== 80 && port !== 443) {
+        showNotification('Los puertos menores a 1024 requieren permisos de administrador', 'warning');
+    }
+});
+</script>
+{% endblock %}
