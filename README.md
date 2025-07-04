@@ -74,7 +74,7 @@ dahua_videos/
 Para solucionar problemas de conectividad:
 ```bash
 python test.py --host <ip_servidor> --port <puerto>
-``` [12](#0-11) 
+``` 
 
 ### Dependencias
 
