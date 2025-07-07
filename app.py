@@ -555,7 +555,7 @@ def get_conversion_command(dav_path, mp4_path, config):
         ]
     elif method == "amd":
         hwaccel_args = [
-            "-hwaccel", "opencl"
+            "-hwaccel", "d3d11va"
         ]
     elif method == "intel":
         hwaccel_args = [
