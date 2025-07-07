@@ -225,6 +225,129 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Configuración de Conversión -->
+            <div class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <div class="section-info">
+                        <h2>Conversión de Videos</h2>
+                        <p>Configuración para la conversión de videos DAV a MP4</p>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="conversion_enabled">
+                                <i class="fas fa-exchange-alt"></i>
+                                Conversión DAV a MP4
+                            </label>
+                            <select id="conversion_enabled" name="conversion_enabled">
+                                <option value="1" {{ 'selected' if config.CONVERSION_ENABLED else '' }}>Habilitado</option>
+                                <option value="0" {{ 'selected' if not config.CONVERSION_ENABLED else '' }}>Deshabilitado</option>
+                            </select>
+                            <small>Activa o desactiva la conversión automática</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_method">
+                                <i class="fas fa-microchip"></i>
+                                Método de Conversión
+                            </label>
+                            <select id="conversion_method" name="conversion_method">
+                                {% for m in ['software', 'nvidia', 'amd', 'intel', 'auto'] %}
+                                <option value="{{ m }}" {{ 'selected' if config.CONVERSION_METHOD == m else '' }}>{{ m|capitalize }}</option>
+                                {% endfor %}
+                            </select>
+                            <small>Elige el método de aceleración</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_preset">
+                                <i class="fas fa-tachometer-alt"></i>
+                                Preset
+                            </label>
+                            <select id="conversion_preset" name="conversion_preset">
+                                {% for p in ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow'] %}
+                                <option value="{{ p }}" {{ 'selected' if config.CONVERSION_PRESET == p else '' }}>{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                            <small>Velocidad/calidad de conversión</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_crf">
+                                <i class="fas fa-sliders-h"></i>
+                                CRF
+                            </label>
+                            <input type="number" id="conversion_crf" name="conversion_crf" min="0" max="51" value="{{ config.CONVERSION_CRF }}">
+                            <small>Calidad (0=mejor, 51=peor, recomendado: 18-28)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_resolution">
+                                <i class="fas fa-expand"></i>
+                                Resolución
+                            </label>
+                            <select id="conversion_resolution" name="conversion_resolution">
+                                {% for r in ['original', '1080p', '720p', '480p'] %}
+                                <option value="{{ r }}" {{ 'selected' if config.CONVERSION_RESOLUTION == r else '' }}>{{ r }}</option>
+                                {% endfor %}
+                            </select>
+                            <small>Resolución de salida</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_threads">
+                                <i class="fas fa-tasks"></i>
+                                Threads
+                            </label>
+                            <input type="number" id="conversion_threads" name="conversion_threads" min="0" max="32" value="{{ config.CONVERSION_THREADS }}">
+                            <small>0 = automático</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_timeout">
+                                <i class="fas fa-clock"></i>
+                                Timeout (segundos)
+                            </label>
+                            <input type="number" id="conversion_timeout" name="conversion_timeout" min="30" max="3600" value="{{ config.CONVERSION_TIMEOUT }}">
+                            <small>Tiempo máximo por conversión</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_audio_codec">
+                                <i class="fas fa-music"></i>
+                                Codec de Audio
+                            </label>
+                            <select id="conversion_audio_codec" name="conversion_audio_codec">
+                                {% for a in ['aac', 'mp3', 'copy'] %}
+                                <option value="{{ a }}" {{ 'selected' if config.CONVERSION_AUDIO_CODEC == a else '' }}>{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_audio_bitrate">
+                                <i class="fas fa-volume-up"></i>
+                                Bitrate de Audio
+                            </label>
+                            <input type="text" id="conversion_audio_bitrate" name="conversion_audio_bitrate" value="{{ config.CONVERSION_AUDIO_BITRATE }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_cleanup_temp">
+                                <i class="fas fa-broom"></i>
+                                Limpiar temporales
+                            </label>
+                            <select id="conversion_cleanup_temp" name="conversion_cleanup_temp">
+                                <option value="1" {{ 'selected' if config.CONVERSION_CLEANUP_TEMP else '' }}>Sí</option>
+                                <option value="0" {{ 'selected' if not config.CONVERSION_CLEANUP_TEMP else '' }}>No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="conversion_custom_args">
+                                <i class="fas fa-terminal"></i>
+                                Argumentos personalizados FFmpeg
+                            </label>
+                            <input type="text" id="conversion_custom_args" name="conversion_custom_args" value="{{ config.CONVERSION_CUSTOM_ARGS }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="form-actions">

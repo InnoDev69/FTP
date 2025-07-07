@@ -35,7 +35,20 @@ DEFAULT_CONFIG = {
     "ATTEMPS_LOGGING": 0,
     "ATTEMPS_MAX": 5,
     "CHANGELOG_FILE": "changelog.json",
-    "LAST_COMMIT_FILE": "last_commit.txt"
+    "LAST_COMMIT_FILE": "last_commit.txt",
+    
+    # Configuración de conversión DAV a MP4
+    "CONVERSION_ENABLED": True,
+    "CONVERSION_METHOD": "software",  # software, nvidia, amd, intel, auto
+    "CONVERSION_PRESET": "fast",      # ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
+    "CONVERSION_CRF": 23,             # 18-28, menor = mejor calidad
+    "CONVERSION_RESOLUTION": "original",  # original, 1080p, 720p, 480p
+    "CONVERSION_THREADS": 0,          # 0 = auto, o número específico
+    "CONVERSION_AUDIO_CODEC": "aac",  # aac, mp3, copy
+    "CONVERSION_AUDIO_BITRATE": "128k",
+    "CONVERSION_CLEANUP_TEMP": True,  # Limpiar archivos temporales
+    "CONVERSION_TIMEOUT": 300,        # Timeout en segundos (5 minutos)
+    "CONVERSION_CUSTOM_ARGS": "",     # Argumentos adicionales de FFmpeg
 }
 
 CONFIG_FILE = Path("config.json")
@@ -241,9 +254,11 @@ def videos_in_folder(folder):
         return redirect(url_for('videos'))
     # Buscar archivos de video en la carpeta y subcarpetas (recursivo, case-insensitive)
     videos = []
-    for f in folder_path.rglob('*'):
-        if f.is_file() and f.suffix.lower() in ('.mp4', '.avi', '.dav'):
-            videos.append(f)
+    videos.extend(
+        f
+        for f in folder_path.rglob('*')
+        if f.is_file() and f.suffix.lower() in ('.mp4', '.avi', '.dav')
+    )
     videos_info = [{
         "name": v.name,
         "size": v.stat().st_size,
@@ -522,30 +537,354 @@ def update():
     flash('Actualizando proyecto... El servidor se reiniciará.', 'info')
     return redirect(url_for('dashboard'))
 
-def convert_dav_to_mp4(dav_path, mp4_path):
-    """Convierte un archivo .dav a .mp4 compatible con navegadores usando ffmpeg"""
+def get_conversion_command(dav_path, mp4_path, config):
+    """
+    Genera el comando FFmpeg basado en la configuración
+    """
+    cmd = ["ffmpeg", "-y"]
+
+    # Configurar método de conversión (aceleración por hardware)
+    method = config.get("CONVERSION_METHOD", "software")
+
+    # Opciones de hwaccel SOLO para la entrada
+    hwaccel_args = []
+    if method == "nvidia":
+        hwaccel_args = [
+            "-hwaccel", "cuda",
+            "-hwaccel_output_format", "cuda"
+        ]
+    elif method == "amd":
+        hwaccel_args = [
+            "-hwaccel", "opencl"
+        ]
+    elif method == "intel":
+        hwaccel_args = [
+            "-hwaccel", "qsv"
+        ]
+    elif method == "auto":
+        hwaccel_args = get_auto_acceleration_args(config)[:4]  # Solo hwaccel args
+
+    # Agrega las opciones de hwaccel ANTES del input
+    cmd.extend(hwaccel_args)
+    cmd.extend(["-i", str(dav_path)])
+
+    # Opciones de codificación de video
+    if method == "nvidia":
+        # Mapear presets a los válidos de h264_nvenc
+        user_preset = config.get("CONVERSION_PRESET", "fast")
+        nvenc_preset_map = {
+            "ultrafast": "fast",
+            "superfast": "fast",
+            "veryfast": "fast",
+            "faster": "fast",
+            "fast": "medium",
+            "medium": "medium",
+            "slow": "slow",
+            "slower": "slow",
+            "veryslow": "slow"
+        }
+        nvenc_preset = nvenc_preset_map.get(user_preset, "medium")
+        cmd.extend([
+            "-c:v", "h264_nvenc",
+            "-preset", nvenc_preset,
+            "-cq", str(config.get("CONVERSION_CRF", 23))
+        ])
+    elif method == "amd":
+        cmd.extend([
+            "-c:v", "h264_amf",
+            "-quality", "speed" if config.get("CONVERSION_PRESET", "fast") in ["ultrafast", "superfast", "veryfast", "faster", "fast"] else "quality",
+            "-crf", str(config.get("CONVERSION_CRF", 23))
+        ])
+    elif method == "intel":
+        cmd.extend([
+            "-c:v", "h264_qsv",
+            "-preset", config.get("CONVERSION_PRESET", "fast"),
+            "-crf", str(config.get("CONVERSION_CRF", 23))
+        ])
+    elif method == "auto":
+        # El resto de args de auto
+        cmd.extend(get_auto_acceleration_args(config)[4:])
+    else:
+        cmd.extend([
+            "-c:v", "libx264",
+            "-preset", config.get("CONVERSION_PRESET", "fast"),
+            "-crf", str(config.get("CONVERSION_CRF", 23))
+        ])
+
+    # Configurar resolución
+    resolution = config.get("CONVERSION_RESOLUTION", "original")
+    if resolution != "original":
+        if resolution == "1080p":
+            cmd.extend(["-vf", "scale=1920:1080"])
+        elif resolution == "720p":
+            cmd.extend(["-vf", "scale=1280:720"])
+        elif resolution == "480p":
+            cmd.extend(["-vf", "scale=854:480"])
+
+    # Configurar audio
+    audio_codec = config.get("CONVERSION_AUDIO_CODEC", "aac")
+    audio_bitrate = config.get("CONVERSION_AUDIO_BITRATE", "128k") or "128k"
+    if audio_codec == "copy":
+        cmd.extend(["-c:a", "copy"])
+    elif audio_codec == "mp3":
+        cmd.extend(["-c:a", "libmp3lame", "-b:a", audio_bitrate])
+    else:  # aac
+        cmd.extend(["-c:a", "aac", "-b:a", audio_bitrate])
+
+    # Configurar threads
+    threads = config.get("CONVERSION_THREADS", 0)
+    if threads > 0:
+        cmd.extend(["-threads", str(threads)])
+
+    # Optimizaciones adicionales
+    cmd.extend([
+        "-movflags", "+faststart",  # Optimización para streaming
+        "-avoid_negative_ts", "make_zero"  # Evitar timestamps negativos
+    ])
+
+    # Argumentos personalizados
+    custom_args = config.get("CONVERSION_CUSTOM_ARGS", "")
+    if custom_args:
+        cmd.extend(custom_args.split())
+
+    # Archivo de salida
+    cmd.append(str(mp4_path))
+
+    return cmd
+
+def get_auto_acceleration_args(config):
+    """
+    Detecta automáticamente la mejor aceleración disponible
+    """
+    import subprocess
+    
+    # Probar NVIDIA
+    try:
+        result = subprocess.run(["nvidia-smi"], capture_output=True, text=True)
+        if result.returncode == 0:
+            return [
+                "-hwaccel", "cuda",
+                "-hwaccel_output_format", "cuda",
+                "-c:v", "h264_nvenc",
+                "-preset", config.get("CONVERSION_PRESET", "fast"),
+                "-cq", str(config.get("CONVERSION_CRF", 23))
+            ]
+    except:
+        pass
+    
+    # Probar Intel QSV
+    try:
+        result = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True)
+        if "h264_qsv" in result.stdout:
+            return [
+                "-hwaccel", "qsv",
+                "-c:v", "h264_qsv",
+                "-preset", config.get("CONVERSION_PRESET", "fast"),
+                "-crf", str(config.get("CONVERSION_CRF", 23))
+            ]
+    except:
+        pass
+    
+    # Fallback a software
+    return [
+        "-c:v", "libx264",
+        "-preset", config.get("CONVERSION_PRESET", "fast"),
+        "-crf", str(config.get("CONVERSION_CRF", 23))
+    ]
+
+def convert_dav_to_mp4_advanced(dav_path, mp4_path, config):
+    """
+    Versión mejorada de conversión con configuración avanzada
+    """
+    import subprocess
+    import os
+    import time
+    
+    if not config.get("CONVERSION_ENABLED", True):
+        print("Conversión deshabilitada en la configuración")
+        return False
+    
     tmp_path = str(mp4_path).replace('.mp4', '.tmp.mp4')
     lock_path = str(mp4_path) + '.lock'
-    # Crea un archivo lock para indicar conversión en curso
+    
+    # Crear archivo lock
     with open(lock_path, 'w') as lock:
         lock.write(str(os.getpid()))
+    
     try:
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(dav_path),
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-c:a", "aac", "-movflags", "+faststart",
-            tmp_path
-        ], check=True)
-        os.rename(tmp_path, mp4_path)
-        return True
+        # Generar comando de conversión
+        cmd = get_conversion_command(dav_path, tmp_path, config)
+        
+        print(f"Iniciando conversión: {' '.join(cmd)}")
+        
+        # Ejecutar conversión con timeout
+        timeout = config.get("CONVERSION_TIMEOUT", 300)
+        start_time = time.time()
+        
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+            
+            if process.returncode == 0:
+                # Conversión exitosa
+                os.rename(tmp_path, mp4_path)
+                
+                # Limpiar archivos temporales si está habilitado
+                if config.get("CONVERSION_CLEANUP_TEMP", True):
+                    cleanup_temp_files(dav_path, mp4_path)
+                
+                elapsed_time = time.time() - start_time
+                print(f"Conversión completada en {elapsed_time:.2f} segundos")
+                return True
+            else:
+                print(f"Error en conversión: {stderr}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            print(f"Conversión cancelada por timeout ({timeout}s)")
+            process.kill()
+            return False
+            
     except Exception as e:
-        print(f"Error convirtiendo {dav_path} a mp4: {e}")
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        print(f"Error en conversión: {e}")
         return False
     finally:
+        # Limpiar archivos temporales
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
         if os.path.exists(lock_path):
             os.remove(lock_path)
+
+def cleanup_temp_files(dav_path, mp4_path):
+    """
+    Limpia archivos temporales relacionados con la conversión
+    """
+    import os
+    import glob
+    
+    try:
+        # Limpiar archivos temporales de FFmpeg
+        base_name = os.path.splitext(mp4_path)[0]
+        temp_patterns = [
+            f"{base_name}*.tmp",
+            f"{base_name}*.temp",
+            f"{base_name}*.log"
+        ]
+        
+        for pattern in temp_patterns:
+            for temp_file in glob.glob(pattern):
+                try:
+                    os.remove(temp_file)
+                except:
+                    pass
+                    
+    except Exception as e:
+        print(f"Error limpiando archivos temporales: {e}")
+
+def validate_conversion_config(config):
+    """
+    Valida la configuración de conversión
+    """
+    errors = []
+    
+    # Validar método de conversión
+    valid_methods = ["software", "nvidia", "amd", "intel", "auto"]
+    if config.get("CONVERSION_METHOD") not in valid_methods:
+        errors.append(f"Método de conversión inválido. Opciones: {', '.join(valid_methods)}")
+    
+    # Validar preset
+    valid_presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
+    if config.get("CONVERSION_PRESET") not in valid_presets:
+        errors.append(f"Preset inválido. Opciones: {', '.join(valid_presets)}")
+    
+    # Validar CRF
+    crf = config.get("CONVERSION_CRF", 23)
+    if not (0 <= crf <= 51):
+        errors.append("CRF debe estar entre 0 y 51")
+    
+    # Validar resolución
+    valid_resolutions = ["original", "1080p", "720p", "480p"]
+    if config.get("CONVERSION_RESOLUTION") not in valid_resolutions:
+        errors.append(f"Resolución inválida. Opciones: {', '.join(valid_resolutions)}")
+    
+    # Validar threads
+    threads = config.get("CONVERSION_THREADS", 0)
+    if threads < 0:
+        errors.append("Número de threads no puede ser negativo")
+    
+    # Validar timeout
+    timeout = config.get("CONVERSION_TIMEOUT", 300)
+    if timeout < 30:
+        errors.append("Timeout mínimo es 30 segundos")
+    
+    return errors
+
+def test_conversion_capabilities():
+    """
+    Prueba las capacidades de conversión disponibles
+    """
+    
+    capabilities = {
+        "ffmpeg_available": False,
+        "nvidia_available": False,
+        "amd_available": False,
+        "intel_available": False,
+        "supported_encoders": []
+    }
+    
+    # Verificar FFmpeg
+    try:
+        result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+        capabilities["ffmpeg_available"] = result.returncode == 0
+    except:
+        return capabilities
+    
+    # Verificar encoders disponibles
+    try:
+        result = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True)
+        if result.returncode == 0:
+            encoders = result.stdout
+            
+            # Verificar NVIDIA
+            if "h264_nvenc" in encoders:
+                capabilities["nvidia_available"] = True
+                capabilities["supported_encoders"].append("h264_nvenc")
+            
+            # Verificar AMD
+            if "h264_amf" in encoders:
+                capabilities["amd_available"] = True
+                capabilities["supported_encoders"].append("h264_amf")
+            
+            # Verificar Intel
+            if "h264_qsv" in encoders:
+                capabilities["intel_available"] = True
+                capabilities["supported_encoders"].append("h264_qsv")
+            
+            # Software encoder
+            if "libx264" in encoders:
+                capabilities["supported_encoders"].append("libx264")
+                
+    except:
+        pass
+    
+    return capabilities
+
+# Ejemplo de uso en la función convert_dav_to_mp4 existente
+def convert_dav_to_mp4(dav_path, mp4_path):
+    """
+    Función de conversión actualizada que usa la configuración avanzada
+    """
+    # Cargar configuración actual
+    config = load_config()
+    
+    # Usar la conversión avanzada
+    return convert_dav_to_mp4_advanced(dav_path, mp4_path, config)
             
 @app.route('/configuration')
 @login_required
@@ -554,6 +893,13 @@ def configuration():
     current_config = load_config()
     return render_template('configuration.html', config=current_config)
 
+def get_int_form(name, default):
+    try:
+        value = request.form.get(name, str(default))
+        return int(value) if value.strip() != '' else default
+    except Exception:
+        return default
+
 @app.route('/save_configuration', methods=['POST'])
 @login_required
 def save_configuration():
@@ -561,31 +907,39 @@ def save_configuration():
     try:
         new_config = {
             'FTP_HOST': request.form.get('ftp_host', 'localhost'),
-            'FTP_PORT': int(request.form.get('ftp_port', 60000)),
+            'FTP_PORT': get_int_form('ftp_port', 60000),
             'VIDEO_DIR': request.form.get('video_dir', 'dahua_videos'),
             'LOG_DIR': request.form.get('log_dir', 'logs'),
             'ALIAS_FILE': request.form.get('alias_file', 'dahua_videos/folder_aliases.json'),
-            'ATTEMPS_LOGGING': int(request.form.get('attemps_logging', 0)),
-            'ATTEMPS_MAX': int(request.form.get('attemps_max', 5)),
+            'ATTEMPS_LOGGING': get_int_form('attemps_logging', 0),
+            'ATTEMPS_MAX': get_int_form('attemps_max', 5),
             'CHANGELOG_FILE': request.form.get('changelog_file', 'changelog.json'),
             'LAST_COMMIT_FILE': request.form.get('last_commit_file', 'last_commit.txt'),
-            'KEEP_DAYS': int(request.form.get('keep_days', 7)),
-            'MAX_CONNECTIONS': int(request.form.get('max_connections', 256)),
-            'MAX_CONNECTIONS_PER_IP': int(request.form.get('max_connections_per_ip', 5)),
-            'BLOCK_DURATION': int(request.form.get('block_duration', 300)),
-            'WEB_PORT': int(request.form.get('web_port', 5000)),
-            'WEB_HOST': request.form.get('web_host', '0.0.0.0')
+            'KEEP_DAYS': get_int_form('keep_days', 7),
+            'MAX_CONNECTIONS': get_int_form('max_connections', 256),
+            'MAX_CONNECTIONS_PER_IP': get_int_form('max_connections_per_ip', 5),
+            'BLOCK_DURATION': get_int_form('block_duration', 300),
+            'WEB_PORT': get_int_form('web_port', 5000),
+            'WEB_HOST': request.form.get('web_host', '0.0.0.0'),
+            'CONVERSION_ENABLED': request.form.get('conversion_enabled', '1') == '1',
+            'CONVERSION_METHOD': request.form.get('conversion_method', 'software'),
+            'CONVERSION_PRESET': request.form.get('conversion_preset', 'fast'),
+            'CONVERSION_CRF': get_int_form('conversion_crf', 23),
+            'CONVERSION_RESOLUTION': request.form.get('conversion_resolution', 'original'),
+            'CONVERSION_THREADS': get_int_form('conversion_threads', 0),
+            'CONVERSION_TIMEOUT': get_int_form('conversion_timeout', 300),
+            'CONVERSION_AUDIO_CODEC': request.form.get('conversion_audio_codec', 'aac'),
+            'CONVERSION_AUDIO_BITRATE': request.form.get('conversion_audio_bitrate', '128k'),
+            'CONVERSION_CLEANUP_TEMP': request.form.get('conversion_cleanup_temp', '1') == '1',
+            'CONVERSION_CUSTOM_ARGS': request.form.get('conversion_custom_args', ''),
         }
         
         # Guardar configuración
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(new_config, f, indent=2, ensure_ascii=False)
-        
         flash('Configuración guardada correctamente. Reinicia el servidor para aplicar los cambios.', 'success')
-        
     except Exception as e:
         flash(f'Error al guardar la configuración: {str(e)}', 'error')
-    
     return redirect(url_for('configuration'))
 
 @app.route('/reset_configuration', methods=['POST'])
