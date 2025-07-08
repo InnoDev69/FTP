@@ -4,6 +4,8 @@ Cliente web para administrar el servidor FTP Dahua
 Aplicación Flask separada del servidor FTP
 """
 
+
+import contextlib
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
 from flask import send_from_directory
 from pathlib import PurePosixPath
@@ -36,7 +38,7 @@ DEFAULT_CONFIG = {
     "ATTEMPS_MAX": 5,
     "CHANGELOG_FILE": "changelog.json",
     "LAST_COMMIT_FILE": "last_commit.txt",
-    
+
     # Configuración de conversión DAV a MP4
     "CONVERSION_ENABLED": True,
     "CONVERSION_METHOD": "software",  # software, nvidia, amd, intel, auto
@@ -337,12 +339,16 @@ def videos():
     # Listar carpetas de primer nivel en VIDEO_DIR
     folders = [f for f in VIDEO_DIR.iterdir() if f.is_dir()]
     folders_info = []
-    for folder in folders:
-        folders_info.append({
+    folders_info.extend(
+        {
             "real_name": folder.name,
             "alias": aliases.get(folder.name, ""),
-            "video_count": len(list(folder.rglob("*.mp4"))) + len(list(folder.rglob("*.avi"))) + len(list(folder.rglob("*.dav")))
-        })
+            "video_count": len(list(folder.rglob("*.mp4")))
+            + len(list(folder.rglob("*.avi")))
+            + len(list(folder.rglob("*.dav"))),
+        }
+        for folder in folders
+    )
     return render_template('videos.html', folders=folders_info)
 
 @app.route('/api/cpu_usage')
@@ -613,14 +619,13 @@ def get_conversion_command(dav_path, mp4_path, config):
 
     # Configurar resolución
     resolution = config.get("CONVERSION_RESOLUTION", "original")
-    if resolution != "original":
-        if resolution == "1080p":
-            cmd.extend(["-vf", "scale=1920:1080"])
-        elif resolution == "720p":
-            cmd.extend(["-vf", "scale=1280:720"])
-        elif resolution == "480p":
-            cmd.extend(["-vf", "scale=854:480"])
+    if resolution == "1080p":
+        cmd.extend(["-vf", "scale=1920:1080"])
+    elif resolution == "480p":
+        cmd.extend(["-vf", "scale=854:480"])
 
+    elif resolution == "720p":
+        cmd.extend(["-vf", "scale=1280:720"])
     # Configurar audio
     audio_codec = config.get("CONVERSION_AUDIO_CODEC", "aac")
     audio_bitrate = config.get("CONVERSION_AUDIO_BITRATE", "128k") or "128k"
@@ -642,9 +647,7 @@ def get_conversion_command(dav_path, mp4_path, config):
         "-avoid_negative_ts", "make_zero"  # Evitar timestamps negativos
     ])
 
-    # Argumentos personalizados
-    custom_args = config.get("CONVERSION_CUSTOM_ARGS", "")
-    if custom_args:
+    if custom_args := config.get("CONVERSION_CUSTOM_ARGS", ""):
         cmd.extend(custom_args.split())
 
     # Archivo de salida
@@ -699,58 +702,58 @@ def convert_dav_to_mp4_advanced(dav_path, mp4_path, config):
     import subprocess
     import os
     import time
-    
+
     if not config.get("CONVERSION_ENABLED", True):
         print("Conversión deshabilitada en la configuración")
         return False
-    
+
     tmp_path = str(mp4_path).replace('.mp4', '.tmp.mp4')
-    lock_path = str(mp4_path) + '.lock'
-    
+    lock_path = f'{str(mp4_path)}.lock'
+
     # Crear archivo lock
     with open(lock_path, 'w') as lock:
         lock.write(str(os.getpid()))
-    
+
     try:
         # Generar comando de conversión
         cmd = get_conversion_command(dav_path, tmp_path, config)
-        
+
         print(f"Iniciando conversión: {' '.join(cmd)}")
-        
+
         # Ejecutar conversión con timeout
         timeout = config.get("CONVERSION_TIMEOUT", 300)
         start_time = time.time()
-        
+
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
         )
-        
+
         try:
             stdout, stderr = process.communicate(timeout=timeout)
-            
+
             if process.returncode == 0:
                 # Conversión exitosa
                 os.rename(tmp_path, mp4_path)
-                
+
                 # Limpiar archivos temporales si está habilitado
                 if config.get("CONVERSION_CLEANUP_TEMP", True):
                     cleanup_temp_files(dav_path, mp4_path)
-                
+
                 elapsed_time = time.time() - start_time
                 print(f"Conversión completada en {elapsed_time:.2f} segundos")
                 return True
             else:
                 print(f"Error en conversión: {stderr}")
                 return False
-                
+
         except subprocess.TimeoutExpired:
             print(f"Conversión cancelada por timeout ({timeout}s)")
             process.kill()
             return False
-            
+
     except Exception as e:
         print(f"Error en conversión: {e}")
         return False
@@ -964,22 +967,19 @@ def play_video(filename):
         flash("Archivo no encontrado", "error")
         return redirect(url_for('videos'))
 
-    if video_path.suffix.lower() == ".dav":
-        temp_name = f"{session['username']}_{video_path.stem}.mp4"
-        temp_path = Path(tempfile.gettempdir()) / temp_name
-
-        # Si el archivo no existe o está vacío, inicia conversión
-        if not temp_path.exists() or temp_path.stat().st_size == 0:
-            lock_path = str(temp_path) + '.lock'
-            if not os.path.exists(lock_path):
-                if temp_path.exists():
-                    temp_path.unlink()
-                threading.Thread(target=convert_dav_to_mp4, args=(video_path, temp_path)).start()
-            return render_template('preparing.html', temp_filename=temp_name)
-        else:
-            return redirect(url_for('player_temp', temp_filename=temp_name))
-    else:
+    if video_path.suffix.lower() != ".dav":
         return render_template('player.html', video_file=url_for('download_video', filename=filename))
+    temp_name = f"{session['username']}_{video_path.stem}.mp4"
+    temp_path = Path(tempfile.gettempdir()) / temp_name
+
+    if temp_path.exists() and temp_path.stat().st_size != 0:
+        return redirect(url_for('player_temp', temp_filename=temp_name))
+    lock_path = f'{str(temp_path)}.lock'
+    if not os.path.exists(lock_path):
+        if temp_path.exists():
+            temp_path.unlink()
+        threading.Thread(target=convert_dav_to_mp4, args=(video_path, temp_path)).start()
+    return render_template('preparing.html', temp_filename=temp_name)
 
 @app.route('/temp_video/<temp_filename>')
 @login_required
@@ -1043,10 +1043,8 @@ def clean_all_temp_videos():
     patterns = ["*_*.mp4", "*_*.tmp.mp4", "*_*.mp4.lock"]
     for pattern in patterns:
         for f in temp_dir.glob(pattern):
-            try:
+            with contextlib.suppress(Exception):
                 f.unlink()
-            except Exception:
-                pass
 
 # Limpieza al cerrar el servidor (funciona en la mayoría de los casos)
 atexit.register(clean_all_temp_videos)
