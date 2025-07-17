@@ -1,0 +1,1022 @@
+{% extends "base.html" %}
+
+{% block title %}Ayuda - Admin FTP{% endblock %}
+
+{% block content %}
+<div class="help-page">
+    <div class="page-header">
+        <h1><i class="fas fa-question-circle"></i> Guía de Usuario - Sistema FTP Dahua</h1>
+        <p class="page-subtitle">Manual completo para utilizar todas las funcionalidades del sistema</p>
+    </div>
+
+    <div class="help-navigation">
+        <div class="help-nav-grid">
+            <a href="#dashboard" class="help-nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#videos" class="help-nav-item">
+                <i class="fas fa-video"></i>
+                <span>Videos</span>
+            </a>
+            <a href="#player" class="help-nav-item">
+                <i class="fas fa-play-circle"></i>
+                <span>Reproductor</span>
+            </a>
+            <a href="#logs" class="help-nav-item">
+                <i class="fas fa-file-alt"></i>
+                <span>Logs</span>
+            </a>
+            <a href="#config" class="help-nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Configuración</span>
+            </a>
+            <a href="#security" class="help-nav-item">
+                <i class="fas fa-shield-alt"></i>
+                <span>Seguridad</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="help-content">
+        <!-- Sección Dashboard -->
+        <section id="dashboard" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+                <p>Panel principal con estadísticas en tiempo real del servidor FTP</p>
+            </div>
+            
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-chart-bar"></i> Estadísticas del Sistema</h3>
+                    <div class="help-content-text">
+                        <p><strong>Estado del Servidor:</strong> Indica si el servidor FTP está en línea o fuera de línea.</p>
+                        <p><strong>Videos Almacenados:</strong> Número total de archivos de video en el sistema.</p>
+                        <p><strong>Espacio Utilizado:</strong> Cantidad de espacio en disco ocupado por los videos.</p>
+                        <p><strong>Uso del Disco:</strong> Porcentaje de uso del disco duro.</p>
+                        <p><strong>Última Subida:</strong> Fecha y hora del último video recibido.</p>
+                        <p><strong>Conexiones:</strong> Número de conexiones FTP activas.</p>
+                        <p><strong>Tiempo de Funcionamiento:</strong> Tiempo que lleva ejecutándose el servidor.</p>
+                        <p><strong>CPU y Memoria:</strong> Uso actual de recursos del sistema.</p>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-sync-alt"></i> Actualización Automática</h3>
+                    <div class="help-content-text">
+                        <p>El sistema verifica automáticamente si hay actualizaciones disponibles en el repositorio Git.</p>
+                        <p><strong>Cómo funciona:</strong></p>
+                        <ul>
+                            <li>Se muestra una notificación cuando hay actualizaciones disponibles</li>
+                            <li>Haz clic en "Actualizar ahora" para aplicar los cambios</li>
+                            <li>El servidor se reiniciará automáticamente después de la actualización</li>
+                            <li>Los cambios se registran en el changelog del sistema</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-table"></i> Videos Recientes</h3>
+                    <div class="help-content-text">
+                        <p>Tabla que muestra los últimos 10 videos recibidos por el servidor FTP.</p>
+                        <p><strong>Información mostrada:</strong></p>
+                        <ul>
+                            <li><strong>Fecha/Hora:</strong> Cuándo se recibió el archivo</li>
+                            <li><strong>Archivo:</strong> Nombre del archivo de video</li>
+                            <li><strong>Tamaño:</strong> Tamaño del archivo en MB</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Videos -->
+        <section id="videos" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-video"></i> Gestión de Videos</h2>
+                <p>Organización y acceso a todos los videos almacenados en el servidor</p>
+            </div>
+
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-folder"></i> Biblioteca de Grabaciones</h3>
+                    <div class="help-content-text">
+                        <p>Vista principal que muestra todas las carpetas de videos organizadas por cámaras o ubicaciones.</p>
+                        <p><strong>Funcionalidades:</strong></p>
+                        <ul>
+                            <li><strong>Búsqueda:</strong> Usa la barra de búsqueda para encontrar carpetas específicas</li>
+                            <li><strong>Actualizar:</strong> Botón para refrescar la lista de carpetas</li>
+                            <li><strong>Contador de Videos:</strong> Cada carpeta muestra cuántos videos contiene</li>
+                            <li><strong>Estadísticas:</strong> Resumen del total de carpetas y videos</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-edit"></i> Gestión de Alias</h3>
+                    <div class="help-content-text">
+                        <p>Sistema para asignar nombres descriptivos a las carpetas de videos.</p>
+                        <p><strong>Cómo usar:</strong></p>
+                        <ol>
+                            <li>Haz clic en el icono de edición <i class="fas fa-edit"></i> en cualquier carpeta</li>
+                            <li>Escribe un nombre descriptivo (ej: "Cámara Entrada Principal")</li>
+                            <li>Presiona Enter o haz clic en "Guardar"</li>
+                            <li>El alias se mostrará en lugar del nombre original de la carpeta</li>
+                        </ol>
+                        <p><strong>Atajos de teclado:</strong></p>
+                        <ul>
+                            <li><strong>Enter:</strong> Guardar cambios</li>
+                            <li><strong>Escape:</strong> Cancelar edición</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-list"></i> Vista de Videos por Carpeta</h3>
+                    <div class="help-content-text">
+                        <p>Al hacer clic en una carpeta, accedes a la lista detallada de todos sus videos.</p>
+                        <p><strong>Información mostrada:</strong></p>
+                        <ul>
+                            <li><strong>Nombre del archivo:</strong> Nombre original del video</li>
+                            <li><strong>Fecha y hora:</strong> Cuándo se grabó o recibió</li>
+                            <li><strong>Tamaño:</strong> Tamaño del archivo</li>
+                            <li><strong>Duración:</strong> Tiempo de duración del video (si está disponible)</li>
+                        </ul>
+                        <p><strong>Acciones disponibles:</strong></p>
+                        <ul>
+                            <li><strong>Reproducir:</strong> Ver el video en el reproductor integrado</li>
+                            <li><strong>Descargar:</strong> Descargar el archivo a tu computadora</li>
+                            <li><strong>Filtrar:</strong> Buscar videos específicos por nombre o fecha</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Reproductor -->
+        <section id="player" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-play-circle"></i> Reproductor de Videos</h2>
+                <p>Reproductor avanzado con soporte para archivos DAV y conversión automática</p>
+            </div>
+
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-play"></i> Reproducción Básica</h3>
+                    <div class="help-content-text">
+                        <p>El reproductor soporta múltiples formatos de video:</p>
+                        <ul>
+                            <li><strong>MP4:</strong> Reproducción directa e inmediata</li>
+                            <li><strong>AVI:</strong> Reproducción directa</li>
+                            <li><strong>DAV:</strong> Conversión automática a MP4 antes de reproducir</li>
+                        </ul>
+                        <p><strong>Controles disponibles:</strong></p>
+                        <ul>
+                            <li><strong>Play/Pausa:</strong> Controlar la reproducción</li>
+                            <li><strong>Barra de progreso:</strong> Navegar por el video</li>
+                            <li><strong>Control de volumen:</strong> Ajustar el audio</li>
+                            <li><strong>Pantalla completa:</strong> Ver en pantalla completa</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-exchange-alt"></i> Conversión DAV a MP4</h3>
+                    <div class="help-content-text">
+                        <p>Los archivos DAV (formato propietario de Dahua) se convierten automáticamente:</p>
+                        <p><strong>Proceso de conversión:</strong></p>
+                        <ol>
+                            <li>Al hacer clic en "Reproducir" en un archivo DAV, se inicia la conversión</li>
+                            <li>Se muestra una pantalla de "Preparando video..."</li>
+                            <li>La conversión se realiza en segundo plano</li>
+                            <li>Una vez completada, el video se reproduce automáticamente</li>
+                        </ol>
+                        <p><strong>Configuración de conversión:</strong></p>
+                        <ul>
+                            <li><strong>Método:</strong> Software, NVIDIA, AMD, Intel o automático</li>
+                            <li><strong>Calidad:</strong> Configurable mediante CRF (18-28)</li>
+                            <li><strong>Resolución:</strong> Original, 1080p, 720p, 480p</li>
+                            <li><strong>Audio:</strong> AAC, MP3 o copia directa</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-keyboard"></i> Atajos de Teclado</h3>
+                    <div class="help-content-text">
+                        <p>Controles rápidos para una mejor experiencia:</p>
+                        <ul>
+                            <li><strong>Espacio:</strong> Play/Pausa</li>
+                            <li><strong>F:</strong> Pantalla completa</li>
+                            <li><strong>M:</strong> Silenciar/Activar audio</li>
+                            <li><strong>R:</strong> Reiniciar video</li>
+                            <li><strong>← →:</strong> Retroceder/Avanzar 10 segundos</li>
+                            <li><strong>↑ ↓:</strong> Subir/Bajar volumen</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-tools"></i> Funciones Avanzadas</h3>
+                    <div class="help-content-text">
+                        <p><strong>Control de velocidad:</strong></p>
+                        <ul>
+                            <li>Botón de velocidad para cambiar entre 0.5x, 1x, 1.25x, 1.5x, 2x</li>
+                            <li>Colores diferentes para cada velocidad</li>
+                        </ul>
+                        <p><strong>Información del video:</strong></p>
+                        <ul>
+                            <li><strong>Duración:</strong> Tiempo total del video</li>
+                            <li><strong>Resolución:</strong> Dimensiones del video</li>
+                            <li><strong>Tamaño estimado:</strong> Tamaño aproximado del archivo</li>
+                        </ul>
+                        <p><strong>Descarga directa:</strong></p>
+                        <ul>
+                            <li>Botón de descarga para guardar el video original</li>
+                            <li>Funciona tanto para archivos originales como convertidos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Logs -->
+        <section id="logs" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-file-alt"></i> Sistema de Logs</h2>
+                <p>Monitoreo y diagnóstico del servidor FTP</p>
+            </div>
+
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-list-alt"></i> Visualización de Logs</h3>
+                    <div class="help-content-text">
+                        <p>Los logs muestran toda la actividad del servidor FTP en tiempo real.</p>
+                        <p><strong>Tipos de eventos registrados:</strong></p>
+                        <ul>
+                            <li><strong>Conexiones:</strong> Intentos de conexión exitosos y fallidos</li>
+                            <li><strong>Transferencias:</strong> Subida y descarga de archivos</li>
+                            <li><strong>Errores:</strong> Problemas del sistema y errores de conexión</li>
+                            <li><strong>Seguridad:</strong> Intentos de acceso no autorizados</li>
+                            <li><strong>Sistema:</strong> Inicio, parada y configuración del servidor</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-filter"></i> Filtrado de Logs</h3>
+                    <div class="help-content-text">
+                        <p>Sistema de filtros para encontrar información específica:</p>
+                        <p><strong>Filtros disponibles:</strong></p>
+                        <ul>
+                            <li><strong>Todos los niveles:</strong> Muestra todos los eventos</li>
+                            <li><strong>INFO:</strong> Solo eventos informativos</li>
+                            <li><strong>WARNING:</strong> Solo advertencias</li>
+                            <li><strong>ERROR:</strong> Solo errores críticos</li>
+                        </ul>
+                        <p><strong>Colores de identificación:</strong></p>
+                        <ul>
+                            <li><strong>Azul:</strong> Eventos informativos (INFO)</li>
+                            <li><strong>Amarillo:</strong> Advertencias (WARNING)</li>
+                            <li><strong>Rojo:</strong> Errores (ERROR)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-sync-alt"></i> Actualización Automática</h3>
+                    <div class="help-content-text">
+                        <p>Los logs se actualizan automáticamente para mostrar la actividad más reciente.</p>
+                        <p><strong>Funcionalidades:</strong></p>
+                        <ul>
+                            <li><strong>Auto-refresh:</strong> Actualización cada 30 segundos</li>
+                            <li><strong>Actualización manual:</strong> Botón "Actualizar" para refresh inmediato</li>
+                            <li><strong>Últimas 200 líneas:</strong> Se muestran los eventos más recientes</li>
+                        </ul>
+                        <p><strong>Interpretación de logs:</strong></p>
+                        <ul>
+                            <li>Cada línea incluye timestamp, nivel y descripción del evento</li>
+                            <li>Los errores de conexión pueden indicar problemas de red</li>
+                            <li>Los intentos fallidos repetidos pueden indicar ataques</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Configuración -->
+        <section id="config" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-cog"></i> Configuración del Sistema</h2>
+                <p>Personalización completa del servidor FTP y sus funcionalidades</p>
+            </div>
+
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-server"></i> Configuración del Servidor FTP</h3>
+                    <div class="help-content-text">
+                        <p><strong>Host/IP del Servidor:</strong> Dirección donde escuchará el servidor (0.0.0.0 para todas las interfaces)</p>
+                        <p><strong>Puerto FTP:</strong> Puerto de conexión (por defecto 60000, evita el 21 estándar)</p>
+                        <p><strong>Conexiones Máximas:</strong> Límite de conexiones simultáneas (recomendado: 256)</p>
+                        <p><strong>Conexiones por IP:</strong> Límite por dirección IP para evitar abuso (recomendado: 5)</p>
+                        <p><strong>Importante:</strong> Después de cambiar estos valores, reinicia el servidor para aplicar los cambios.</p>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-shield-alt"></i> Configuración de Seguridad</h3>
+                    <div class="help-content-text">
+                        <p><strong>Intentos Máximos:</strong> Número de intentos fallidos antes de bloquear una IP</p>
+                        <p><strong>Duración del Bloqueo:</strong> Tiempo en segundos que permanece bloqueada una IP</p>
+                        <p><strong>Registro de Intentos:</strong></p>
+                        <ul>
+                            <li><strong>Deshabilitado:</strong> No registra intentos de conexión</li>
+                            <li><strong>Solo errores:</strong> Registra únicamente intentos fallidos</li>
+                            <li><strong>Todos los intentos:</strong> Registra todos los intentos (exitosos y fallidos)</li>
+                        </ul>
+                        <p><strong>Recomendaciones:</strong></p>
+                        <ul>
+                            <li>Mantén los intentos máximos entre 3-5</li>
+                            <li>Duración de bloqueo de 5-10 minutos (300-600 segundos)</li>
+                            <li>Habilita el registro para monitorear ataques</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-folder"></i> Gestión de Archivos</h3>
+                    <div class="help-content-text">
+                        <p><strong>Directorio de Videos:</strong> Carpeta donde se almacenan los videos recibidos</p>
+                        <p><strong>Directorio de Logs:</strong> Carpeta para archivos de registro del sistema</p>
+                        <p><strong>Días de Retención:</strong> Tiempo que se mantienen los archivos antes de eliminarlos automáticamente</p>
+                        <p><strong>Archivo de Alias:</strong> Ubicación del archivo JSON con los nombres personalizados de carpetas</p>
+                        <p><strong>Consejos:</strong></p>
+                        <ul>
+                            <li>Usa rutas absolutas o relativas al directorio del proyecto</li>
+                            <li>Asegúrate de que las carpetas tengan permisos de escritura</li>
+                            <li>Configura la retención según tu espacio disponible</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-globe"></i> Interfaz Web</h3>
+                    <div class="help-content-text">
+                        <p><strong>Host Web:</strong> Dirección IP para acceder a la interfaz (0.0.0.0 para acceso desde cualquier IP)</p>
+                        <p><strong>Puerto Web:</strong> Puerto para la interfaz web (por defecto 5000)</p>
+                        <p><strong>Configuraciones comunes:</strong></p>
+                        <ul>
+                            <li><strong>Solo local:</strong> Host: 127.0.0.1, Puerto: 5000</li>
+                            <li><strong>Red local:</strong> Host: 0.0.0.0, Puerto: 5000</li>
+                            <li><strong>Puerto personalizado:</strong> Cualquier puerto libre (ej: 8080)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-video"></i> Conversión de Videos</h3>
+                    <div class="help-content-text">
+                        <p><strong>Conversión DAV a MP4:</strong> Habilita/deshabilita la conversión automática</p>
+                        <p><strong>Método de Conversión:</strong></p>
+                        <ul>
+                            <li><strong>Software:</strong> Usa CPU (compatible con todos los sistemas)</li>
+                            <li><strong>NVIDIA:</strong> Aceleración por GPU NVIDIA (requiere drivers)</li>
+                            <li><strong>AMD:</strong> Aceleración por GPU AMD</li>
+                            <li><strong>Intel:</strong> Aceleración Intel Quick Sync</li>
+                            <li><strong>Auto:</strong> Detecta automáticamente la mejor opción</li>
+                        </ul>
+                        <p><strong>Configuración de Calidad:</strong></p>
+                        <ul>
+                            <li><strong>Preset:</strong> Velocidad vs calidad (fast recomendado)</li>
+                            <li><strong>CRF:</strong> Calidad (18=excelente, 23=buena, 28=aceptable)</li>
+                            <li><strong>Resolución:</strong> Mantener original o reducir para ahorrar espacio</li>
+                        </ul>
+                        <p><strong>Configuración de Audio:</strong></p>
+                        <ul>
+                            <li><strong>AAC:</strong> Mejor compatibilidad</li>
+                            <li><strong>MP3:</strong> Mayor compatibilidad</li>
+                            <li><strong>Copy:</strong> Mantener audio original (más rápido)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-save"></i> Guardar y Restablecer</h3>
+                    <div class="help-content-text">
+                        <p><strong>Guardar Configuración:</strong></p>
+                        <ul>
+                            <li>Los cambios se guardan inmediatamente en el archivo config.json</li>
+                            <li>Algunos cambios requieren reiniciar el servidor</li>
+                            <li>Se muestra una confirmación cuando se guarda correctamente</li>
+                        </ul>
+                        <p><strong>Restablecer Configuración:</strong></p>
+                        <ul>
+                            <li>Vuelve a los valores por defecto del sistema</li>
+                            <li>Útil si hay problemas con la configuración actual</li>
+                            <li>Se requiere confirmación antes de restablecer</li>
+                        </ul>
+                        <p><strong>Validación:</strong></p>
+                        <ul>
+                            <li>Los campos se validan en tiempo real</li>
+                            <li>Los valores fuera de rango se marcan en rojo</li>
+                            <li>Se muestran advertencias para configuraciones potencialmente problemáticas</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Seguridad -->
+        <section id="security" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-shield-alt"></i> Seguridad y Acceso</h2>
+                <p>Información sobre el sistema de autenticación y seguridad</p>
+            </div>
+
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-sign-in-alt"></i> Sistema de Login</h3>
+                    <div class="help-content-text">
+                        <p>El sistema utiliza las mismas credenciales del servidor FTP para el acceso web.</p>
+                        <p><strong>Proceso de autenticación:</strong></p>
+                        <ol>
+                            <li>Ingresa tu usuario y contraseña del servidor FTP</li>
+                            <li>El sistema verifica las credenciales contra el servidor FTP</li>
+                            <li>Si son correctas, se crea una sesión web</li>
+                            <li>La sesión permanece activa hasta que cierres sesión o expire</li>
+                        </ol>
+                        <p><strong>Credenciales por defecto:</strong></p>
+                        <ul>
+                            <li><strong>Usuario:</strong> admin</li>
+                            <li><strong>Contraseña:</strong> admin123</li>
+                        </ul>
+                        <p><strong>Importante:</strong> Cambia las credenciales por defecto por seguridad.</p>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-lock"></i> Protección de Sesiones</h3>
+                    <div class="help-content-text">
+                        <p>Todas las páginas (excepto login) requieren autenticación activa.</p>
+                        <p><strong>Características de seguridad:</strong></p>
+                        <ul>
+                            <li><strong>Sesiones seguras:</strong> Cada sesión tiene un token único</li>
+                            <li><strong>Timeout automático:</strong> Las sesiones expiran por inactividad</li>
+                            <li><strong>Logout seguro:</strong> Limpia completamente la sesión</li>
+                            <li><strong>Protección CSRF:</strong> Previene ataques de falsificación</li>
+                        </ul>
+                        <p><strong>Buenas prácticas:</strong></p>
+                        <ul>
+                            <li>Cierra sesión cuando termines de usar el sistema</li>
+                            <li>No compartas las credenciales de acceso</li>
+                            <li>Accede solo desde redes confiables</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-ban"></i> Sistema Anti-Brute Force</h3>
+                    <div class="help-content-text">
+                        <p>Protección automática contra ataques de fuerza bruta en el servidor FTP.</p>
+                        <p><strong>Cómo funciona:</strong></p>
+                        <ul>
+                            <li>Monitorea intentos de login fallidos por IP</li>
+                            <li>Bloquea automáticamente IPs con muchos intentos fallidos</li>
+                            <li>El bloqueo es temporal (configurable)</li>
+                            <li>Se registran todos los intentos sospechosos</li>
+                        </ul>
+                        <p><strong>Configuración recomendada:</strong></p>
+                        <ul>
+                            <li><strong>Intentos máximos:</strong> 3-5 intentos</li>
+                            <li><strong>Tiempo de bloqueo:</strong> 5-15 minutos</li>
+                            <li><strong>Logging:</strong> Habilitado para monitoreo</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-eye"></i> Monitoreo de Actividad</h3>
+                    <div class="help-content-text">
+                        <p>El sistema registra toda la actividad para auditoría y seguridad.</p>
+                        <p><strong>Eventos monitoreados:</strong></p>
+                        <ul>
+                            <li><strong>Logins web:</strong> Accesos exitosos y fallidos a la interfaz</li>
+                            <li><strong>Conexiones FTP:</strong> Todas las conexiones al servidor</li>
+                            <li><strong>Transferencias:</strong> Subida y descarga de archivos</li>
+                            <li><strong>Cambios de configuración:</strong> Modificaciones del sistema</li>
+                            <li><strong>Errores del sistema:</strong> Problemas técnicos</li>
+                        </ul>
+                        <p><strong>Revisión de logs:</strong></p>
+                        <ul>
+                            <li>Revisa regularmente los logs en la sección "Logs"</li>
+                            <li>Busca patrones sospechosos o errores recurrentes</li>
+                            <li>Los intentos de acceso no autorizados aparecen como errores</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección de Solución de Problemas -->
+        <section id="troubleshooting" class="help-section">
+            <div class="section-header">
+                <h2><i class="fas fa-tools"></i> Solución de Problemas Comunes</h2>
+                <p>Guía para resolver los problemas más frecuentes</p>
+            </div>
+
+            <div class="help-cards">
+                <div class="help-card">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Problemas de Conexión</h3>
+                    <div class="help-content-text">
+                        <p><strong>El servidor aparece como "Fuera de línea":</strong></p>
+                        <ul>
+                            <li>Verifica que el servidor FTP esté ejecutándose</li>
+                            <li>Comprueba que el puerto configurado esté libre</li>
+                            <li>Revisa la configuración de firewall</li>
+                            <li>Verifica las credenciales de acceso</li>
+                        </ul>
+                        <p><strong>No puedo acceder desde otra computadora:</strong></p>
+                        <ul>
+                            <li>Configura el host web como "0.0.0.0"</li>
+                            <li>Abre el puerto en el firewall</li>
+                            <li>Verifica la conectividad de red</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-video"></i> Problemas con Videos</h3>
+                    <div class="help-content-text">
+                        <p><strong>Los videos DAV no se convierten:</strong></p>
+                        <ul>
+                            <li>Verifica que FFmpeg esté instalado</li>
+                            <li>Comprueba la configuración de conversión</li>
+                            <li>Revisa los logs para errores específicos</li>
+                            <li>Prueba con el método "software" si hay problemas con aceleración</li>
+                        </ul>
+                        <p><strong>La conversión es muy lenta:</strong></p>
+                        <ul>
+                            <li>Usa aceleración por hardware si está disponible</li>
+                            <li>Ajusta el preset a "fast" o "faster"</li>
+                            <li>Reduce la resolución de salida</li>
+                            <li>Aumenta el número de threads</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-hdd"></i> Problemas de Espacio</h3>
+                    <div class="help-content-text">
+                        <p><strong>Disco lleno o casi lleno:</strong></p>
+                        <ul>
+                            <li>Reduce los días de retención de archivos</li>
+                            <li>Elimina manualmente videos antiguos</li>
+                            <li>Configura una resolución menor para conversiones</li>
+                            <li>Considera usar un disco externo para almacenamiento</li>
+                        </ul>
+                        <p><strong>Los archivos no se eliminan automáticamente:</strong></p>
+                        <ul>
+                            <li>Verifica la configuración de días de retención</li>
+                            <li>Comprueba los permisos de la carpeta de videos</li>
+                            <li>Revisa los logs para errores de eliminación</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="help-card">
+                    <h3><i class="fas fa-redo"></i> Reinicio y Recuperación</h3>
+                    <div class="help-content-text">
+                        <p><strong>Cuándo reiniciar el servidor:</strong></p>
+                        <ul>
+                            <li>Después de cambiar la configuración del servidor FTP</li>
+                            <li>Si hay problemas de memoria o rendimiento</li>
+                            <li>Después de actualizar el sistema</li>
+                            <li>Si los logs muestran errores persistentes</li>
+                        </ul>
+                        <p><strong>Recuperación de configuración:</strong></p>
+                        <ul>
+                            <li>Usa "Restablecer configuración" si hay problemas</li>
+                            <li>Los archivos de configuración se guardan en config.json</li>
+                            <li>Puedes editar manualmente el archivo si es necesario</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<style>
+.help-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.page-subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin: 0.5rem 0 0 0;
+    font-weight: 400;
+}
+
+.help-navigation {
+    margin: 3rem 0;
+    padding: 2rem;
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+}
+
+.help-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+}
+
+.help-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: rgba(34, 34, 34, 0.6);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.help-nav-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.help-nav-item:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+}
+
+.help-nav-item:hover::before {
+    transform: scaleX(1);
+}
+
+.help-nav-item i {
+    font-size: 2rem;
+    color: var(--accent-secondary);
+    transition: all 0.3s ease;
+}
+
+.help-nav-item:hover i {
+    color: var(--accent-primary);
+    transform: scale(1.1);
+}
+
+.help-nav-item span {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.help-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+}
+
+.help-section {
+    scroll-margin-top: 2rem;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: rgba(26, 26, 26, 0.4);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-subtle);
+}
+
+.section-header h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.section-header h2 i {
+    color: var(--accent-secondary);
+    font-size: 1.8rem;
+}
+
+.section-header p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin: 0;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.help-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+}
+
+.help-card {
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.help-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-muted), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.help-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.help-card:hover::before {
+    opacity: 1;
+}
+
+.help-card h3 {
+    background: rgba(17, 17, 17, 0.5);
+    padding: 1.5rem 2rem;
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.help-card h3 i {
+    color: var(--accent-secondary);
+    font-size: 1.1rem;
+}
+
+.help-content-text {
+    padding: 2rem;
+    line-height: 1.7;
+}
+
+.help-content-text p {
+    color: var(--text-secondary);
+    margin: 0 0 1.5rem 0;
+}
+
+.help-content-text p:last-child {
+    margin-bottom: 0;
+}
+
+.help-content-text strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.help-content-text ul,
+.help-content-text ol {
+    color: var(--text-secondary);
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.help-content-text li {
+    margin: 0.5rem 0;
+    line-height: 1.6;
+}
+
+.help-content-text ul li::marker {
+    color: var(--accent-muted);
+}
+
+.help-content-text ol li::marker {
+    color: var(--accent-secondary);
+    font-weight: 600;
+}
+
+.help-content-text code {
+    background: rgba(34, 34, 34, 0.8);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: var(--accent-primary);
+    border: 1px solid var(--border-subtle);
+}
+
+/* Animaciones de entrada */
+.help-card {
+    animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.help-card:nth-child(1) { animation-delay: 0.1s; }
+.help-card:nth-child(2) { animation-delay: 0.2s; }
+.help-card:nth-child(3) { animation-delay: 0.3s; }
+.help-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .help-nav-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .help-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header h2 {
+        font-size: 1.6rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .help-nav-item {
+        padding: 1rem;
+    }
+    
+    .help-nav-item i {
+        font-size: 1.5rem;
+    }
+    
+    .help-content-text {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .help-page {
+        margin: 0 -1rem;
+    }
+    
+    .help-navigation {
+        margin: 2rem 1rem;
+        padding: 1.5rem;
+    }
+    
+    .help-nav-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .help-card {
+        margin: 0 1rem;
+        border-radius: var(--radius-lg);
+    }
+    
+    .section-header {
+        margin: 0 1rem 2rem;
+        padding: 1.5rem;
+    }
+    
+    .help-content {
+        gap: 3rem;
+    }
+}
+
+/* Smooth scrolling para navegación interna */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Destacar enlaces internos */
+.help-content-text a {
+    color: var(--accent-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.help-content-text a:hover {
+    border-bottom-color: var(--accent-secondary);
+}
+
+/* Mejorar legibilidad de listas anidadas */
+.help-content-text ul ul,
+.help-content-text ol ol {
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+}
+
+.help-content-text ul ul li,
+.help-content-text ol ol li {
+    margin: 0.25rem 0;
+    font-size: 0.95em;
+    color: var(--text-muted);
+}
+</style>
+
+<script>
+// Smooth scrolling para la navegación
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('.help-nav-item');
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            
+            if (targetElement) {
+                targetElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Highlight active section in navigation
+    const sections = document.querySelectorAll('.help-section');
+    const navItems = document.querySelectorAll('.help-nav-item');
+    
+    function highlightActiveSection() {
+        let current = '';
+        
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - 100;
+            const sectionHeight = section.offsetHeight;
+            
+            if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
+                current = section.getAttribute('id');
+            }
+        });
+        
+        navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('href') === '#' + current) {
+                item.classList.add('active');
+            }
+        });
+    }
+    
+    window.addEventListener('scroll', highlightActiveSection);
+    highlightActiveSection(); // Initial call
+});
+
+// Add active state styles
+const style = document.createElement('style');
+style.textContent = `
+    .help-nav-item.active {
+        background: rgba(160, 160, 160, 0.1);
+        border-color: var(--accent-muted);
+        color: var(--text-primary);
+    }
+    
+    .help-nav-item.active i {
+        color: var(--accent-primary);
+    }
+    
+    .help-nav-item.active::before {
+        transform: scaleX(1);
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

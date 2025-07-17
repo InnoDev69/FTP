@@ -958,6 +958,12 @@ def reset_configuration():
     
     return redirect(url_for('configuration'))
 
+@app.route('/help')
+@login_required
+def help_page():
+    """Página de ayuda del sistema"""
+    return render_template('help.html')
+
 @app.route('/play/<path:filename>')
 @login_required
 def play_video(filename):

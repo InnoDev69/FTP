@@ -20,9 +20,58 @@
             </div>
         </div>
         <div class="header-actions">
-            <div class="search-box">
-                <input type="text" id="videoSearch" placeholder="Buscar videos..." onkeyup="filterVideos()">
-                <i class="fas fa-search"></i>
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="videoSearch" placeholder="Buscar por dispositivo, canal, fecha u hora..." onkeyup="filterVideos()">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="search-filters">
+                    <div class="filter-group">
+                        <label>Dispositivo:</label>
+                        <select id="deviceFilter" onchange="filterVideos()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Canal:</label>
+                        <select id="channelFilter" onchange="filterVideos()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Fecha:</label>
+                        <input type="date" id="dateFilter" onchange="filterVideos()">
+                    </div>
+                    <div class="filter-group">
+                        <label>Hora:</label>
+                        <select id="hourFilter" onchange="filterVideos()">
+                            <option value="">Todas</option>
+                            {% for hour in range(24) %}
+                            <option value="{{ '%02d'|format(hour) }}">{{ '%02d:00'|format(hour) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="clearFilters()">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                </div>
+                <div class="search-help">
+                    <button class="btn-help" onclick="toggleSearchHelp()">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <div class="search-help-tooltip" id="searchHelpTooltip">
+                        <h4>Búsqueda Avanzada</h4>
+                        <p><strong>Texto libre:</strong> Busca en nombre del dispositivo</p>
+                        <p><strong>Filtros:</strong> Usa los selectores para filtrar por canal, fecha y hora</p>
+                        <p><strong>Comandos rápidos:</strong></p>
+                        <ul>
+                            <li><code>ch:2</code> - Canal 2</li>
+                            <li><code>fecha:2025-01-14</code> - Fecha específica</li>
+                            <li><code>hora:22</code> - Hora específica</li>
+                            <li><code>Casa ch:1</code> - Dispositivo Casa, Canal 1</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <div class="view-toggle">
                 <button class="btn-icon active" onclick="setView('grid')" id="gridViewBtn" title="Vista en cuadrícula">
@@ -45,8 +94,15 @@
             <div class="stat-item-small">
                 <i class="fas fa-video"></i>
                 <div>
-                    <span class="stat-number-small">{{ videos|length }}</span>
+                    <span class="stat-number-small" id="totalVideos">{{ videos|length }}</span>
                     <span class="stat-label-small">Videos</span>
+                </div>
+            </div>
+            <div class="stat-item-small">
+                <i class="fas fa-eye"></i>
+                <div>
+                    <span class="stat-number-small" id="visibleVideos">{{ videos|length }}</span>
+                    <span class="stat-label-small">Visibles</span>
                 </div>
             </div>
             <div class="stat-item-small">
@@ -66,7 +122,7 @@
             <!-- Vista en cuadrícula -->
             <div class="videos-grid" id="videosGrid">
                 {% for v in videos %}
-                <div class="video-card" data-video-name="{{ v.name|lower }}">
+                <div class="video-card" data-video-name="{{ v.name|lower }}" data-video-info="{{ v.name }}">
                     <div class="video-thumbnail">
                         <div class="play-overlay">
                             <i class="fas fa-play"></i>
@@ -75,6 +131,7 @@
                             <i class="fas fa-clock"></i>
                             <span>{{ "%.1f"|format(v.size / (1024*1024)) }} MB</span>
                         </div>
+                        <div class="video-tags" id="tags-{{ loop.index }}"></div>
                     </div>
                     
                     <div class="video-info">
@@ -82,13 +139,14 @@
                         <div class="video-meta">
                             <span class="video-date">
                                 <i class="fas fa-calendar"></i>
-                                {{ v.mtime.strftime('%d/%m/%Y') }}
+                                <span id="parsed-date-{{ loop.index }}">{{ v.mtime.strftime('%d/%m/%Y') }}</span>
                             </span>
                             <span class="video-time">
                                 <i class="fas fa-clock"></i>
-                                {{ v.mtime.strftime('%H:%M') }}
+                                <span id="parsed-time-{{ loop.index }}">{{ v.mtime.strftime('%H:%M') }}</span>
                             </span>
                         </div>
+                        <div class="video-parsed-info" id="parsed-info-{{ loop.index }}"></div>
                     </div>
                     
                     <div class="video-actions">
@@ -110,23 +168,27 @@
             <div class="videos-list" id="videosList" style="display: none;">
                 <div class="list-header">
                     <div class="col-name">Nombre</div>
+                    <div class="col-device">Dispositivo</div>
+                    <div class="col-channel">Canal</div>
+                    <div class="col-date">Fecha/Hora</div>
                     <div class="col-size">Tamaño</div>
-                    <div class="col-date">Fecha</div>
                     <div class="col-actions">Acciones</div>
                 </div>
                 {% for v in videos %}
-                <div class="video-row" data-video-name="{{ v.name|lower }}">
+                <div class="video-row" data-video-name="{{ v.name|lower }}" data-video-info="{{ v.name }}">
                     <div class="col-name">
                         <i class="fas fa-video"></i>
                         <span class="video-name" title="{{ v.name }}">{{ v.name }}</span>
                     </div>
-                    <div class="col-size">{{ "%.1f"|format(v.size / (1024*1024)) }} MB</div>
+                    <div class="col-device" id="list-device-{{ loop.index }}">-</div>
+                    <div class="col-channel" id="list-channel-{{ loop.index }}">-</div>
                     <div class="col-date">
                         <div class="date-info">
-                            <span class="date">{{ v.mtime.strftime('%d/%m/%Y') }}</span>
-                            <span class="time">{{ v.mtime.strftime('%H:%M') }}</span>
+                            <span class="date" id="list-date-{{ loop.index }}">{{ v.mtime.strftime('%d/%m/%Y') }}</span>
+                            <span class="time" id="list-time-{{ loop.index }}">{{ v.mtime.strftime('%H:%M') }}</span>
                         </div>
                     </div>
+                    <div class="col-size">{{ "%.1f"|format(v.size / (1024*1024)) }} MB</div>
                     <div class="col-actions">
                         <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
                             <i class="fas fa-play"></i>
@@ -179,6 +241,7 @@
                 <strong>Fecha:</strong>
                 <span id="modalVideoDate"></span>
             </div>
+            <div id="modalParsedInfo"></div>
         </div>
     </div>
 </div>
@@ -216,6 +279,166 @@
 
 .breadcrumb a:hover {
     color: var(--text-primary);
+}
+
+.search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+    max-width: 800px;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+}
+
+.search-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: rgba(26, 26, 26, 0.6);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    backdrop-filter: var(--blur-sm);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 120px;
+}
+
+.filter-group label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 0.5rem;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.search-help {
+    position: relative;
+}
+
+.btn-help {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.btn-help:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.search-help-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: rgba(26, 26, 26, 0.95);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    min-width: 300px;
+    z-index: 1000;
+    display: none;
+    backdrop-filter: var(--blur-md);
+    box-shadow: var(--shadow-lg);
+}
+
+.search-help-tooltip h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.search-help-tooltip p {
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.search-help-tooltip ul {
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+}
+
+.search-help-tooltip li {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0;
+}
+
+.search-help-tooltip code {
+    background: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-family: monospace;
+    color: var(--accent-primary);
+}
+
+.video-tags {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.video-tag {
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--text-primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 500;
+    backdrop-filter: var(--blur-sm);
+}
+
+.video-tag.device {
+    background: rgba(59, 130, 246, 0.8);
+}
+
+.video-tag.channel {
+    background: rgba(16, 185, 129, 0.8);
+}
+
+.video-parsed-info {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.parsed-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.parsed-detail i {
+    color: var(--accent-muted);
+    opacity: 0.8;
 }
 
 .view-toggle {
@@ -417,7 +640,7 @@
 
 .list-header {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 0.8fr 1fr 0.8fr 1fr;
     gap: 1rem;
     padding: 1.5rem;
     background: rgba(17, 17, 17, 0.5);
@@ -431,7 +654,7 @@
 
 .video-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 0.8fr 1fr 0.8fr 1fr;
     gap: 1rem;
     padding: 1.5rem;
     border-bottom: 1px solid var(--border-subtle);
@@ -464,6 +687,12 @@
     text-overflow: ellipsis;
     color: var(--text-primary);
     font-weight: 500;
+}
+
+.col-device,
+.col-channel {
+    font-weight: 500;
+    color: var(--text-secondary);
 }
 
 .date-info {
@@ -586,8 +815,17 @@
         width: 100%;
     }
     
-    .search-box input {
-        width: 100%;
+    .search-container {
+        max-width: none;
+    }
+    
+    .search-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        min-width: auto;
     }
     
     .stats-grid-small {
@@ -614,8 +852,10 @@
     }
     
     .col-name,
-    .col-size,
+    .col-device,
+    .col-channel,
     .col-date,
+    .col-size,
     .col-actions {
         margin-bottom: 0.75rem;
     }
@@ -633,27 +873,503 @@
     .modal-body {
         padding: 1.5rem;
     }
+    
+    .search-help-tooltip {
+        right: auto;
+        left: 0;
+        min-width: 280px;
+    }
 }
 </style>
 
 <script>
 let currentView = 'grid';
+let videoData = [];
+let allDevices = new Set();
+let allChannels = new Set();
 
-function filterVideos() {
-    const searchTerm = document.getElementById('videoSearch').value.toLowerCase();
-    const videos = document.querySelectorAll('.video-card, .video-row');
+// Función para formatear fecha
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
     
-    videos.forEach(video => {
-        const videoName = video.dataset.videoName;
+    if (dateStr.length === 8) {
+        const year = dateStr.substring(0, 4);
+        const month = dateStr.substring(4, 6);
+        const day = dateStr.substring(6, 8);
         
-        if (videoName.includes(searchTerm)) {
-            video.style.display = currentView === 'grid' ? 'block' : 'grid';
-        } else {
-            video.style.display = 'none';
+        // Validar que sean números válidos
+        if (isNaN(year) || isNaN(month) || isNaN(day)) {
+            return 'N/A';
         }
+        
+        return `${day}/${month}/${year}`;
+    }
+    return 'N/A';
+}
+
+// Función para formatear hora
+function formatTime(timeStr) {
+    if (timeStr.length === 6) {
+        const hour = timeStr.substring(0, 2);
+        const minute = timeStr.substring(2, 4);
+        return `${hour}:${minute}`;
+    }
+    return timeStr;
+}
+
+// Función para poblar los filtros de dispositivo y canal
+function populateFilters() {
+    const deviceFilter = document.getElementById('deviceFilter');
+    const channelFilter = document.getElementById('channelFilter');
+
+    // Limpiar opciones existentes (excepto "Todos")
+    deviceFilter.innerHTML = '<option value="">Todos</option>';
+    channelFilter.innerHTML = '<option value="">Todos</option>';
+
+    // Añadir dispositivos
+    Array.from(allDevices).sort().forEach(device => {
+        const option = document.createElement('option');
+        option.value = device;
+        option.textContent = device;
+        deviceFilter.appendChild(option);
+    });
+
+    // Añadir canales
+    Array.from(allChannels).sort((a, b) => a - b).forEach(channel => {
+        const option = document.createElement('option');
+        option.value = channel;
+        option.textContent = `CH${channel}`;
+        channelFilter.appendChild(option);
     });
 }
 
+
+// Inicializar datos de video al cargar la página
+function initializeVideoData() {
+    console.log('🚀 INITIALIZING VIDEO DATA');
+    
+    const videoCards = document.querySelectorAll('.video-card');
+    const videoRows = document.querySelectorAll('.video-row');
+    
+    videoData = [];
+    allDevices.clear();
+    allChannels.clear();
+    
+    let validCount = 0;
+    let invalidCount = 0;
+    
+    videoCards.forEach((video, index) => {
+        const filename = video.dataset.videoInfo;
+        const parsed = parseVideoFilename(filename);
+        
+        if (parsed.isValid) {
+            validCount++;
+            allDevices.add(parsed.device);
+            allChannels.add(parsed.channel);
+        } else {
+            invalidCount++;
+            console.warn(`❌ Invalid file ${index + 1}: ${filename} - ${parsed.error}`);
+            console.warn(`   Please ensure filename matches format: Device_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext`);
+        }
+        
+        // Actualizar información visual para ambas vistas
+        updateVideoDisplay(video, videoRows[index], parsed, index + 1);
+
+        videoData.push({
+            gridElement: video,
+            listElement: videoRows[index],
+            filename: filename,
+            parsed: parsed,
+            index: index + 1
+        });
+    });
+    
+    console.log('📊 SUMMARY:');
+    console.log(`✅ Valid files: ${validCount}`);
+    console.log(`❌ Invalid files: ${invalidCount}`);
+    console.log('🏠 Devices found:', Array.from(allDevices));
+    console.log('📺 Channels found:', Array.from(allChannels));
+    
+    // Poblar filtros
+    populateFilters();
+}
+
+// Función mejorada para parsear el nombre del archivo con debugging
+function parseVideoFilename(filename) {
+    console.log(`=== PARSING: ${filename} ===`);
+    
+    // Formato esperado: Casa_ch2_main_20250714220000_20250714230000.dav
+    const regex = /^(.+?)_ch(\d+)_main_(\d{8})(\d{6})_(\d{8})(\d{6})\.(.+)$/;
+    const match = filename.match(regex);
+    
+    if (!match) {
+        console.log('❌ Regex no coincide');
+        return { isValid: false, error: 'Filename format not recognized' };
+    }
+    
+    const [fullMatch, device, channel, startDate, startTime, endDate, endTime, extension] = match;
+    console.log('✅ Regex match:', {
+        device, channel, startDate, startTime, endDate, endTime, extension
+    });
+    
+    try {
+        // Parsear fecha y hora de inicio
+        const year = parseInt(startDate.substring(0, 4));
+        const month = parseInt(startDate.substring(4, 6));
+        const day = parseInt(startDate.substring(6, 8));
+        const hour = parseInt(startTime.substring(0, 2));
+        const minute = parseInt(startTime.substring(2, 4));
+        const second = parseInt(startTime.substring(4, 6));
+        
+        console.log('📅 Parsed values:', { year, month, day, hour, minute, second });
+        
+        // Validar que los valores sean válidos
+        if (year < 1900 || year > 2100) {
+            console.log('❌ Invalid year:', year);
+            return { isValid: false, error: `Invalid year: ${year}` };
+        }
+        if (month < 1 || month > 12) {
+            console.log('❌ Invalid month:', month);
+            return { isValid: false, error: `Invalid month: ${month}` };
+        }
+        if (day < 1 || day > 31) {
+            console.log('❌ Invalid day:', day);
+            return { isValid: false, error: `Invalid day: ${day}` };
+        }
+        if (hour < 0 || hour > 23) {
+            console.log('❌ Invalid hour:', hour);
+            return { isValid: false, error: `Invalid hour: ${hour}` };
+        }
+        if (minute < 0 || minute > 59) {
+            console.log('❌ Invalid minute:', minute);
+            return { isValid: false, error: `Invalid minute: ${minute}` };
+        }
+        if (second < 0 || second > 59) {
+            console.log('❌ Invalid second:', second);
+            return { isValid: false, error: `Invalid second: ${second}` };
+        }
+        
+        console.log('✅ All values are valid');
+        
+        // Crear fecha usando mes base-1 para JavaScript
+        const startDateTime = new Date(year, month - 1, day, hour, minute, second);
+        console.log('📅 Created date:', startDateTime);
+        
+        // Verificar que la fecha se creó correctamente
+        if (isNaN(startDateTime.getTime())) {
+            console.log('❌ Failed to create valid date');
+            return { isValid: false, error: 'Failed to create date' };
+        }
+        
+        // Verificar que la fecha creada coincide con los valores originales
+        if (startDateTime.getFullYear() !== year || 
+            startDateTime.getMonth() !== (month - 1) || 
+            startDateTime.getDate() !== day ||
+            startDateTime.getHours() !== hour ||
+            startDateTime.getMinutes() !== minute ||
+            startDateTime.getSeconds() !== second) {
+            console.log('❌ Date validation failed - created date doesn\'t match input');
+            console.log('Expected:', { year, month: month-1, day, hour, minute, second });
+            console.log('Got:', { 
+                year: startDateTime.getFullYear(), 
+                month: startDateTime.getMonth(), 
+                day: startDateTime.getDate(),
+                hour: startDateTime.getHours(),
+                minute: startDateTime.getMinutes(),
+                second: startDateTime.getSeconds()
+            });
+            return { isValid: false, error: 'Date validation failed' };
+        }
+        
+        const result = {
+            device: device,
+            channel: parseInt(channel),
+            startDate: startDate, // YYYYMMDD
+            startTime: startTime, // HHMMSS
+            endDate: endDate,
+            endTime: endTime,
+            startDateTime: startDateTime,
+            hour: hour,
+            day: day,
+            month: month,
+            year: year,
+            extension: extension,
+            isValid: true
+        };
+        
+        console.log('✅ SUCCESS - Final result:', result);
+        return result;
+        
+    } catch (error) {
+        console.error(`❌ ERROR parsing ${filename}:`, error);
+        return { isValid: false, error: error.message };
+    }
+}
+
+// Actualizar la visualización del video con información parseada
+function updateVideoDisplay(gridElement, listElement, parsed, index) {
+    // Elementos de la vista de cuadrícula
+    const tagsContainer = document.getElementById(`tags-${index}`);
+    const parsedDateElement = document.getElementById(`parsed-date-${index}`);
+    const parsedTimeElement = document.getElementById(`parsed-time-${index}`);
+    const parsedInfoElement = document.getElementById(`parsed-info-${index}`);
+    
+    // Elementos de la vista de lista
+    const listDevice = document.getElementById(`list-device-${index}`);
+    const listChannel = document.getElementById(`list-channel-${index}`);
+    const listDate = document.getElementById(`list-date-${index}`);
+    const listTime = document.getElementById(`list-time-${index}`);
+
+    if (parsed.isValid) {
+        // Actualizar tags en vista de cuadrícula
+        if (tagsContainer) {
+            tagsContainer.innerHTML = `
+                <span class="video-tag device">${parsed.device}</span>
+                <span class="video-tag channel">CH${parsed.channel}</span>
+            `;
+        }
+        
+        // Actualizar fecha y hora parseadas en grid
+        if (parsedDateElement && parsed.isValid) {
+            parsedDateElement.textContent = convertirFecha(parsed.startDate);
+        }
+        if (parsedTimeElement && parsed.isValid) {
+            parsedTimeElement.textContent = formatTime(parsed.startTime);
+        }
+        
+        // Actualizar información adicional en grid
+        if (parsedInfoElement) {
+            parsedInfoElement.innerHTML = `
+                <div class="parsed-detail">
+                    <i class="fas fa-desktop"></i>
+                    <span>${parsed.device}</span>
+                </div>
+                <div class="parsed-detail">
+                    <i class="fas fa-tv"></i>
+                    <span>Canal ${parsed.channel}</span>
+                </div>
+            `;
+        }
+        
+        // Actualizar vista de lista
+        if (listDevice) listDevice.textContent = parsed.device;
+        if (listChannel) listChannel.textContent = `CH${parsed.channel}`;
+        if (listDate) listDate.textContent = convertirFecha(parsed.startDate);
+        if (listTime) listTime.textContent = formatTime(parsed.startTime);
+
+    } else {
+        // Si el parseo falla, mostrar "N/A" o un mensaje de error
+        if (tagsContainer) tagsContainer.innerHTML = '<span class="video-tag">Error</span>';
+        if (parsedDateElement) parsedDateElement.textContent = 'N/A';
+        if (parsedTimeElement) parsedTimeElement.textContent = 'N/A';
+        if (parsedInfoElement) {
+            parsedInfoElement.innerHTML = `
+                <div class="parsed-detail" style="color: var(--text-error);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Formato de nombre inválido</span>
+                </div>
+            `;
+        }
+        if (listDevice) listDevice.textContent = 'N/A';
+        if (listChannel) listChannel.textContent = 'N/A';
+        if (listDate) listDate.textContent = 'N/A';
+        if (listTime) listTime.textContent = 'N/A';
+    }
+}
+
+// Función principal de filtrado mejorada
+function filterVideos() {
+    const searchTerm = document.getElementById('videoSearch').value.toLowerCase().trim();
+    const deviceFilter = document.getElementById('deviceFilter').value;
+    const channelFilter = document.getElementById('channelFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    const hourFilter = document.getElementById('hourFilter').value;
+    
+    let visibleCount = 0;
+    
+    // Parsear comandos rápidos del texto de búsqueda
+    const quickCommands = parseQuickCommands(searchTerm);
+    
+    console.log('Filtering with:', { deviceFilter, channelFilter, dateFilter, hourFilter, quickCommands }); // Debug
+    
+    videoData.forEach((video, index) => {
+        let match = true;
+        const { parsed, filename } = video;
+        
+        // Debug para el primer video
+        if (index === 0) {
+            console.log('First video debug:', { filename, parsed, quickCommands });
+        }
+        
+        // Filtro por dispositivo (selector o comando rápido)
+        const targetDevice = deviceFilter || quickCommands.device;
+        if (targetDevice && (!parsed.isValid || parsed.device.toLowerCase() !== targetDevice.toLowerCase())) {
+            match = false;
+            if (index === 0) console.log('Device filter failed:', { targetDevice, parsedDevice: parsed.device });
+        }
+        
+        // Filtro por canal (selector o comando rápido)
+        const targetChannel = channelFilter || quickCommands.channel;
+        if (targetChannel && (!parsed.isValid || parsed.channel !== parseInt(targetChannel))) {
+            match = false;
+            if (index === 0) console.log('Channel filter failed:', { targetChannel, parsedChannel: parsed.channel });
+        }
+        
+        // Filtro por fecha (selector o comando rápido) - MEJORADO
+        const targetDate = dateFilter || quickCommands.date;
+        if (targetDate) {
+            if (!parsed.isValid) {
+                match = false;
+                if (index === 0) console.log('Date filter failed: invalid parsed data');
+            } else {
+                let targetDateFormatted = targetDate;
+                
+                // Si viene del selector de fecha (formato YYYY-MM-DD), convertir a YYYYMMDD
+                if (targetDate.includes('-')) {
+                    targetDateFormatted = targetDate.replace(/-/g, '');
+                }
+                
+                // Si viene de comando rápido, puede estar en varios formatos
+                if (targetDateFormatted.length === 8) {
+                    if (parsed.startDate !== targetDateFormatted) {
+                        match = false;
+                        if (index === 0) console.log('Date filter failed:', { 
+                            targetDateFormatted, 
+                            parsedStartDate: parsed.startDate,
+                            originalTarget: targetDate 
+                        });
+                    }
+                } else {
+                    match = false;
+                    if (index === 0) console.log('Date format invalid:', targetDateFormatted);
+                }
+            }
+        }
+        
+        // Filtro por hora (selector o comando rápido)
+        const targetHour = hourFilter || quickCommands.hour;
+        if (targetHour && (!parsed.isValid || parsed.hour !== parseInt(targetHour))) {
+            match = false;
+            if (index === 0) console.log('Hour filter failed:', { targetHour, parsedHour: parsed.hour });
+        }
+        
+        // Búsqueda de texto libre (excluyendo comandos)
+        const freeText = quickCommands.freeText;
+        if (freeText) {
+            const searchableText = parsed.isValid ? 
+                `${parsed.device} ${filename}`.toLowerCase() : 
+                filename.toLowerCase();
+            
+            if (!searchableText.includes(freeText)) {
+                match = false;
+                if (index === 0) console.log('Free text filter failed:', { freeText, searchableText });
+            }
+        }
+        
+        // Mostrar/ocultar elemento - CORREGIDO para evitar duplicados
+        if (match) {
+            if (currentView === 'grid') {
+                video.gridElement.style.display = 'block';
+                if (video.listElement) video.listElement.style.display = 'none';
+            } else {
+                video.gridElement.style.display = 'none';
+                if (video.listElement) video.listElement.style.display = 'grid';
+            }
+            visibleCount++;
+        } else {
+            video.gridElement.style.display = 'none';
+            if (video.listElement) video.listElement.style.display = 'none';
+        }
+    });
+    
+    console.log('Visible count:', visibleCount); // Debug
+    
+    // Actualizar contador de videos visibles
+    const visibleVideosElement = document.getElementById('visibleVideos');
+    if (visibleVideosElement) {
+        visibleVideosElement.textContent = visibleCount;
+    }
+}
+
+// Parsear comandos rápidos del texto de búsqueda - MEJORADO
+function parseQuickCommands(searchText) {
+    const commands = {
+        device: null,
+        channel: null,
+        date: null,
+        hour: null,
+        freeText: ''
+    };
+    
+    let remainingText = searchText;
+    
+    // Extraer comando de canal: ch:2 o canal:2
+    const channelMatch = remainingText.match(/(?:ch|canal):(\d+)/i);
+    if (channelMatch) {
+        commands.channel = channelMatch[1];
+        remainingText = remainingText.replace(channelMatch[0], '').trim();
+    }
+    
+    // Extraer comando de fecha: fecha:2025-01-14 o fecha:20250114
+    const dateMatch = remainingText.match(/fecha:([\d-/]+)/i);
+    if (dateMatch) {
+        let dateValue = dateMatch[1];
+        
+        // Convertir diferentes formatos a YYYYMMDD
+        if (dateValue.includes('-')) {
+            const parts = dateValue.split('-');
+            if (parts.length === 3) {
+                // Formato YYYY-MM-DD
+                if (parts[0].length === 4) {
+                    dateValue = parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+                }
+                // Formato DD-MM-YYYY
+                else if (parts[2].length === 4) {
+                    dateValue = parts[2] + parts[1].padStart(2, '0') + parts[0].padStart(2, '0');
+                }
+            }
+        } else if (dateValue.includes('/')) {
+            const parts = dateValue.split('/');
+            if (parts.length === 3) {
+                // Formato DD/MM/YYYY
+                if (parts[2].length === 4) {
+                    dateValue = parts[2] + parts[1].padStart(2, '0') + parts[0].padStart(2, '0');
+                }
+                // Formato YYYY/MM/DD
+                else if (parts[0].length === 4) {
+                    dateValue = parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+                }
+            }
+        }
+        
+        commands.date = dateValue;
+        remainingText = remainingText.replace(dateMatch[0], '').trim();
+    }
+    
+    // Extraer comando de hora: hora:22
+    const hourMatch = remainingText.match(/hora:(\d{1,2})/i);
+    if (hourMatch) {
+        commands.hour = hourMatch[1].padStart(2, '0');
+        remainingText = remainingText.replace(hourMatch[0], '').trim();
+    }
+    
+    // El texto restante es búsqueda libre
+    commands.freeText = remainingText;
+    
+    return commands;
+}
+
+// Limpiar todos los filtros
+function clearFilters() {
+    document.getElementById('videoSearch').value = '';
+    document.getElementById('deviceFilter').value = '';
+    document.getElementById('channelFilter').value = '';
+    document.getElementById('dateFilter').value = '';
+    document.getElementById('hourFilter').value = '';
+    filterVideos();
+}
+
+// Cambiar vista
 function setView(view) {
     currentView = view;
     const gridView = document.getElementById('videosGrid');
@@ -674,16 +1390,90 @@ function setView(view) {
     }
     
     // Reapply filter if there's a search term
-    const searchTerm = document.getElementById('videoSearch').value;
-    if (searchTerm) {
-        filterVideos();
-    }
+    filterVideos();
 }
 
+// Mostrar/ocultar ayuda de búsqueda
+function toggleSearchHelp() {
+    const tooltip = document.getElementById('searchHelpTooltip');
+    tooltip.style.display = tooltip.style.display === 'block' ? 'none' : 'block';
+}
+
+// Cerrar ayuda al hacer clic fuera
+document.addEventListener('click', function(e) {
+    const helpButton = document.querySelector('.btn-help');
+    const tooltip = document.getElementById('searchHelpTooltip');
+    
+    if (!helpButton.contains(e.target) && !tooltip.contains(e.target)) {
+        tooltip.style.display = 'none';
+    }
+});
+
+function convertirFecha(fechaString) {
+    // Verificar que el string tenga exactamente 8 caracteres
+    if (fechaString.length !== 8) {
+        throw new Error('El formato debe ser YYYYMMDD (8 dígitos)');
+    }
+    
+    // Extraer año, mes y día
+    const año = fechaString.substring(0, 4);
+    const mes = fechaString.substring(4, 6);
+    const dia = fechaString.substring(6, 8);
+    
+    // Retornar en formato DD/MM/YYYY
+    return `${dia}/${mes}/${año}`;
+}
+
+// Mostrar información del video
 function showVideoInfo(name, size, date) {
     document.getElementById('modalVideoName').textContent = name;
     document.getElementById('modalVideoSize').textContent = size + ' MB';
     document.getElementById('modalVideoDate').textContent = date;
+    
+    // Agregar información parseada al modal
+    const parsed = parseVideoFilename(name);
+    const modalParsedInfo = document.getElementById('modalParsedInfo');
+    
+    if (parsed.isValid) {
+        modalParsedInfo.innerHTML = `
+            <div class="info-row">
+                <strong>Dispositivo:</strong>
+                <span>${parsed.device}</span>
+            </div>
+            <div class="info-row">
+                <strong>Canal:</strong>
+                <span>Canal ${parsed.channel}</span>
+            </div>
+            <div class="info-row">
+                <strong>Fecha de grabación:</strong>
+                <span>${convertirFecha(parsed.startDate)}</span>
+            </div>
+            <div class="info-row">
+                <strong>Hora de inicio:</strong>
+                <span>${formatTime(parsed.startTime)}</span>
+            </div>
+            <div class="info-row">
+                <strong>Hora de fin:</strong>
+                <span>${formatTime(parsed.endTime)}</span>
+            </div>
+        `;
+    } else {
+        modalParsedInfo.innerHTML = `
+            <div class="info-row">
+                <strong>Formato:</strong>
+                <span style="color: var(--text-error);">No se pudo parsear el nombre del archivo.</span>
+            </div>
+            <div class="info-row">
+                <strong>Error:</strong>
+                <span style="color: var(--text-error);">${parsed.error || 'Desconocido'}</span>
+            </div>
+            <div class="info-row">
+                <strong>Formato esperado:</strong>
+                <span><code>Dispositivo_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext</code></span>
+            </div>
+        `;
+    }
+    
     document.getElementById('videoInfoModal').style.display = 'flex';
 }
 
@@ -695,7 +1485,13 @@ function closeVideoInfo() {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeVideoInfo();
+        document.getElementById('searchHelpTooltip').style.display = 'none';
     }
+});
+
+// Inicializar cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    initializeVideoData();
 });
 </script>
 {% endblock %}
