@@ -24,6 +24,9 @@ __pycache__
 logs.ftp_server.log
 *.log
 dahua_videos
+config.json
+folder_aliases.json
+security_data.json
 
 # vercel
 .vercel
@@ -211,4 +214,3 @@ pyrightconfig.json
 
 logs/ftp_server.log
 FTP.code-workspace
-config.json

@@ -156,6 +156,19 @@
                             <input type="text" id="alias_file" name="alias_file" value="{{ config.ALIAS_FILE }}" required>
                             <small>Archivo JSON para almacenar alias de carpetas</small>
                         </div>
+                        <div class="form-group">
+                            <label for="temp_dir">Directorio Temporal</label>
+                            <input type="text" 
+                                class="form-control" 
+                                id="temp_dir" 
+                                name="temp_dir" 
+                                value="{{ config.get('TEMP_DIR', 'temp') }}"
+                                placeholder="Ruta al directorio temporal">
+                            <small class="form-text text-muted">
+                                Ruta donde se guardarán los archivos temporales de conversión. 
+                                Puede ser absoluta o relativa al directorio del proyecto.
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -12,17 +12,16 @@ from pathlib import PurePosixPath
 import os
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import psutil
 import ftplib
 from functools import wraps
 import subprocess
 import threading
-import tempfile
 import signal
 import atexit
-import glob
+from tempManager import TempFileManager
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'  # Cambiar en producción
@@ -51,6 +50,10 @@ DEFAULT_CONFIG = {
     "CONVERSION_CLEANUP_TEMP": True,  # Limpiar archivos temporales
     "CONVERSION_TIMEOUT": 300,        # Timeout en segundos (5 minutos)
     "CONVERSION_CUSTOM_ARGS": "",     # Argumentos adicionales de FFmpeg
+    
+    "TEMP_DIR": "temp",               # Directorio temporal para archivos intermedios
+    "TEMP_FILE_MAX_AGE": 30,      # Tiempo máximo de vida de archivos temporales (1 hora)
+    "TEMP_CLEANUP_INTERVAL": 30,   # Intervalo de limpieza (30 minutos)
 }
 
 CONFIG_FILE = Path("config.json")
@@ -65,6 +68,7 @@ def load_config():
             config = json.load(f)
     return config
 
+temp_manager = TempFileManager(config_loader=load_config)
 config = load_config()
 
 # Usar la configuración cargada
@@ -93,6 +97,20 @@ def format_uptime(seconds):
         return f"{minutes}m {seconds}s"
     else:
         return f"{seconds}s"
+
+def get_temp_dir():
+    """Obtiene el directorio temporal configurado"""
+    config = load_config()
+    temp_dir = config.get("TEMP_DIR", "temp")
+    
+    # Si es una ruta relativa, hacerla absoluta desde el directorio del proyecto
+    if not os.path.isabs(temp_dir):
+        temp_dir = os.path.join(os.path.dirname(__file__), temp_dir)
+    
+    # Crear el directorio si no existe
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    return temp_dir
 
 def login_required(f):
     """Decorador para requerir login"""
@@ -738,6 +756,9 @@ def convert_dav_to_mp4_advanced(dav_path, mp4_path, config):
                 # Conversión exitosa
                 os.rename(tmp_path, mp4_path)
 
+                # CORREGIR: Registrar el archivo FINAL, no el temporal
+                temp_manager.register_file(mp4_path)
+                
                 # Limpiar archivos temporales si está habilitado
                 if config.get("CONVERSION_CLEANUP_TEMP", True):
                     cleanup_temp_files(dav_path, mp4_path)
@@ -878,6 +899,37 @@ def test_conversion_capabilities():
     
     return capabilities
 
+def is_temp_video_ready(temp_path):
+    """
+    Verifica si un video temporal está listo y completo
+    """
+    if not temp_path.exists():
+        return False
+    
+    # Verifica el registro en el gestor temporal
+    if not temp_manager.access_file(temp_path):
+        return False
+    
+    # Verificar que no hay archivo lock
+    lock_path = f'{str(temp_path)}.lock'
+    if os.path.exists(lock_path):
+        return False
+    
+    # Verificar que el archivo tiene contenido
+    if temp_path.stat().st_size == 0:
+        return False
+    
+    # Verificar que el archivo no está creciendo (estable por al menos 2 segundos)
+    try:
+        size1 = temp_path.stat().st_size
+        time.sleep(2)
+        if not temp_path.exists():
+            return False
+        size2 = temp_path.stat().st_size
+        return size1 == size2 and size1 > 0
+    except:
+        return False
+
 # Ejemplo de uso en la función convert_dav_to_mp4 existente
 def convert_dav_to_mp4(dav_path, mp4_path):
     """
@@ -888,6 +940,19 @@ def convert_dav_to_mp4(dav_path, mp4_path):
     
     # Usar la conversión avanzada
     return convert_dav_to_mp4_advanced(dav_path, mp4_path, config)
+            
+@app.route('/api/temp_files_status')
+@login_required
+def temp_files_status():
+    """API para obtener el estado de los archivos temporales"""
+    return jsonify(temp_manager.get_status())
+
+@app.route('/api/force_temp_cleanup', methods=['POST'])
+@login_required
+def force_temp_cleanup():
+    """API para forzar limpieza de archivos temporales"""
+    removed = temp_manager.force_cleanup()
+    return jsonify({'removed_files': removed})            
             
 @app.route('/configuration')
 @login_required
@@ -914,6 +979,7 @@ def save_configuration():
             'VIDEO_DIR': request.form.get('video_dir', 'dahua_videos'),
             'LOG_DIR': request.form.get('log_dir', 'logs'),
             'ALIAS_FILE': request.form.get('alias_file', 'dahua_videos/folder_aliases.json'),
+            'TEMP_DIR': request.form.get('temp_dir', 'temp'),
             'ATTEMPS_LOGGING': get_int_form('attemps_logging', 0),
             'ATTEMPS_MAX': get_int_form('attemps_max', 5),
             'CHANGELOG_FILE': request.form.get('changelog_file', 'changelog.json'),
@@ -935,6 +1001,9 @@ def save_configuration():
             'CONVERSION_AUDIO_BITRATE': request.form.get('conversion_audio_bitrate', '128k'),
             'CONVERSION_CLEANUP_TEMP': request.form.get('conversion_cleanup_temp', '1') == '1',
             'CONVERSION_CUSTOM_ARGS': request.form.get('conversion_custom_args', ''),
+            
+            'TEMP_FILE_MAX_AGE': get_int_form('temp_file_max_age', 1800),  # 30 minutos
+            'TEMP_CLEANUP_INTERVAL': get_int_form('temp_cleanup_interval', 1800),  # 30 minutos
         }
         
         # Guardar configuración
@@ -975,53 +1044,188 @@ def play_video(filename):
 
     if video_path.suffix.lower() != ".dav":
         return render_template('player.html', video_file=url_for('download_video', filename=filename))
+    
     temp_name = f"{session['username']}_{video_path.stem}.mp4"
-    temp_path = Path(tempfile.gettempdir()) / temp_name
+    temp_path = Path(get_temp_dir()) / temp_name
 
-    if temp_path.exists() and temp_path.stat().st_size != 0:
+    # Verificar si el video temporal ya está listo
+    if is_temp_video_ready(temp_path):
         return redirect(url_for('player_temp', temp_filename=temp_name))
+    
     lock_path = f'{str(temp_path)}.lock'
     if not os.path.exists(lock_path):
         if temp_path.exists():
             temp_path.unlink()
         threading.Thread(target=convert_dav_to_mp4, args=(video_path, temp_path)).start()
+    
     return render_template('preparing.html', temp_filename=temp_name)
 
 @app.route('/temp_video/<temp_filename>')
 @login_required
 def temp_video(temp_filename):
     """Sirve el archivo mp4 temporal"""
-    temp_path = Path(tempfile.gettempdir()) / temp_filename
-    if not temp_path.exists():
+    temp_path = Path(get_temp_dir()) / temp_filename
+    
+    # Verificar y actualizar acceso al archivo
+    if not temp_manager.access_file(temp_path):
         flash("El video temporal expiró. Intenta de nuevo.", "error")
         return redirect(url_for('videos'))
-    return send_from_directory(tempfile.gettempdir(), temp_filename, as_attachment=False)
+        
+    return send_from_directory(get_temp_dir(), temp_filename, as_attachment=False)
 
 @app.route('/check_temp_video/<temp_filename>')
 @login_required
 def check_temp_video(temp_filename):
     """API para saber si el video temporal ya está listo y estable"""
-    temp_path = Path(tempfile.gettempdir()) / temp_filename
-    if not temp_path.exists():
-        return jsonify({'ready': False})
-    # Comprobar que el archivo no esté creciendo (esperar 1 segundo y comparar tamaño)
-    size1 = temp_path.stat().st_size
-    time.sleep(1)
-    if not temp_path.exists():
-        return jsonify({'ready': False})
-    size2 = temp_path.stat().st_size
-    ready = size1 == size2 and size1 > 0
+    temp_path = Path(get_temp_dir()) / temp_filename
+    ready = is_temp_video_ready(temp_path)
     return jsonify({'ready': ready})
 
 @app.route('/player_temp/<temp_filename>')
 @login_required
 def player_temp(temp_filename):
     """Muestra el reproductor para el video temporal"""
-    temp_path = Path(tempfile.gettempdir()) / temp_filename
+    temp_path = Path(get_temp_dir()) / temp_filename
     if not temp_path.exists():
         flash("El video temporal expiró. Intenta de nuevo.", "error")
         return redirect(url_for('videos'))
     return render_template('player.html', video_file=url_for('temp_video', temp_filename=temp_filename))
+
+@app.route('/multi_channel_player')
+@login_required
+def multi_channel_player():
+    """Página del reproductor multi-canal"""
+    selected_videos = request.args.getlist('videos')
+    layout = request.args.get('layout', '2x2')
+    folder = request.args.get('folder', '')
+    
+    if not selected_videos:
+        flash("No se seleccionaron videos para reproducir", "error")
+        return redirect(url_for('videos'))
+    
+    # Obtener información de los videos seleccionados
+    videos_info = []
+    for video_path in selected_videos:
+        full_path = VIDEO_DIR / video_path
+        if full_path.exists():
+            # Parsear información del canal
+            parsed_info = parse_video_filename_server(full_path.name)
+            
+            videos_info.append({
+                'path': video_path,
+                'name': full_path.name,
+                'size': full_path.stat().st_size,
+                'channel': parsed_info.get('channel', 'N/A'),
+                'device': parsed_info.get('device', 'Unknown'),
+                'start_time': parsed_info.get('start_time', ''),
+                'is_dav': full_path.suffix.lower() == '.dav'
+            })
+    
+    return render_template('multi_channel_player.html', 
+                         videos=videos_info, 
+                         layout=layout,
+                         folder=folder)
+
+@app.route('/api/prepare_multi_videos', methods=['POST'])
+@login_required
+def prepare_multi_videos():
+    """Preparar videos para reproducción multi-canal"""
+    video_paths = request.json.get('videos', [])
+    prepared_videos = []
+    
+    for video_path in video_paths:
+        full_path = VIDEO_DIR / video_path
+        if not full_path.exists():
+            continue
+            
+        video_info = {
+            'path': video_path,
+            'name': full_path.name,
+            'ready': True,
+            'url': url_for('download_video', filename=video_path)
+        }
+        
+        # Si es archivo DAV, verificar conversión
+        if full_path.suffix.lower() == '.dav':
+            temp_name = f"{session['username']}_{full_path.stem}.mp4"
+            temp_path = Path(get_temp_dir()) / temp_name
+            
+            # Verificar si el video temporal ya está listo
+            if is_temp_video_ready(temp_path):
+                video_info['url'] = url_for('temp_video', temp_filename=temp_name)
+                video_info['ready'] = True
+            else:
+                # Verificar si ya hay una conversión en progreso
+                lock_path = f'{str(temp_path)}.lock'
+                if not os.path.exists(lock_path):
+                    # Limpiar archivo temporal incompleto si existe
+                    if temp_path.exists() and temp_path.stat().st_size == 0:
+                        temp_path.unlink()
+                    
+                    # Iniciar conversión
+                    threading.Thread(
+                        target=convert_dav_to_mp4, 
+                        args=(full_path, temp_path)
+                    ).start()
+                
+                video_info['ready'] = False
+                video_info['temp_name'] = temp_name
+        
+        prepared_videos.append(video_info)
+    
+    return jsonify({'videos': prepared_videos})
+
+@app.route('/api/check_conversion_status')
+@login_required
+def check_conversion_status():
+    """Verificar estado de conversión de videos"""
+    temp_names = request.args.getlist('temp_names')
+    status = {}
+    
+    for temp_name in temp_names:
+        temp_path = Path(get_temp_dir()) / temp_name
+        lock_path = f'{str(temp_path)}.lock'
+        
+        if is_temp_video_ready(temp_path):
+            status[temp_name] = {
+                'ready': True,
+                'url': url_for('temp_video', temp_filename=temp_name)
+            }
+        elif os.path.exists(lock_path):
+            status[temp_name] = {'ready': False, 'status': 'converting'}
+        else:
+            status[temp_name] = {'ready': False, 'status': 'pending'}
+    
+    return jsonify(status)
+
+def parse_video_filename_server(filename):
+    """Parsear nombre de archivo de video (versión servidor)"""
+    import re
+    
+    # Formato: Device_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext
+    pattern = r'^(.+?)_ch(\d+)_main_(\d{8})(\d{6})_(\d{8})(\d{6})\.(.+)$'
+    match = re.match(pattern, filename)
+    
+    if match:
+        device, channel, start_date, start_time, end_date, end_time, ext = match.groups()
+        
+        try:
+            hour = int(start_time[:2])
+            return {
+                'device': device,
+                'channel': int(channel),
+                'start_date': start_date,
+                'start_time': start_time,
+                'end_date': end_date,
+                'end_time': end_time,
+                'hour': hour,
+                'extension': ext,
+                'is_valid': True
+            }
+        except:
+            pass
+    
+    return {'is_valid': False, 'device': 'Unknown', 'channel': 'N/A'}
 
 def load_folder_aliases():
     if ALIAS_FILE.exists():
@@ -1045,12 +1249,22 @@ def set_folder_alias():
 
 def clean_all_temp_videos():
     """Elimina TODOS los archivos temporales de video al cerrar el servidor"""
-    temp_dir = Path(tempfile.gettempdir())
+    print("Limpiando archivos temporales al cerrar servidor...")
+    
+    # Detener hilo de limpieza
+    temp_manager.stop_cleanup_thread()
+    
+    # Forzar limpieza con edad 0 (todos los archivos)
+    temp_manager.cleanup_old_files(max_age=0)
+    
+    # Limpieza adicional por patrones (backup)
+    temp_dir = Path(get_temp_dir())
     patterns = ["*_*.mp4", "*_*.tmp.mp4", "*_*.mp4.lock"]
     for pattern in patterns:
         for f in temp_dir.glob(pattern):
             with contextlib.suppress(Exception):
                 f.unlink()
+                print(f"Archivo eliminado: {f}")
 
 # Limpieza al cerrar el servidor (funciona en la mayoría de los casos)
 atexit.register(clean_all_temp_videos)
@@ -1072,4 +1286,3 @@ if __name__ == '__main__':
     print("=============================")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
-

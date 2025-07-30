@@ -1,202 +1,238 @@
 {% extends "base.html" %}
 {% block title %}{{ alias or folder }} - Videos{% endblock %}
 {% block content %}
-<div class="videos-page">
-    <div class="page-header">
-        <div class="header-left">
-            <h1>
-                <i class="fas fa-folder-open"></i>
-                {{ alias or folder }}
-                {% if alias %}
-                    <small class="folder-real-name">({{ folder }})</small>
-                {% endif %}
-            </h1>
-            <div class="breadcrumb">
-                <a href="{{ url_for('videos') }}">
-                    <i class="fas fa-video"></i> Biblioteca
+
+<div class="video-library">
+    <!-- Header mejorado -->
+    <header class="library-header">
+        <div class="header-content">
+            <div class="header-info">
+                <h1 class="library-title">
+                    <i class="fas fa-folder-open"></i>
+                    {{ alias or folder }}
+                    {% if alias %}
+                        <span class="folder-subtitle">({{ folder }})</span>
+                    {% endif %}
+                </h1>
+                <nav class="breadcrumb">
+                    <a href="{{ url_for('videos') }}" class="breadcrumb-link">
+                        <i class="fas fa-video"></i>
+                        Biblioteca
+                    </a>
+                    <i class="fas fa-chevron-right"></i>
+                    <span class="breadcrumb-current">{{ alias or folder }}</span>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <a href="{{ url_for('videos') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
                 </a>
-                <i class="fas fa-chevron-right"></i>
-                <span>{{ alias or folder }}</span>
             </div>
         </div>
-        <div class="header-actions">
-            <div class="search-container">
-                <div class="search-box">
-                    <input type="text" id="videoSearch" placeholder="Buscar por dispositivo, canal, fecha u hora..." onkeyup="filterVideos()">
-                    <i class="fas fa-search"></i>
+    </header>
+
+    <!-- Estadísticas compactas -->
+    {% if videos %}
+    <section class="stats-section">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-video"></i>
                 </div>
-                <div class="search-filters">
-                    <div class="filter-group">
-                        <label>Dispositivo:</label>
-                        <select id="deviceFilter" onchange="filterVideos()">
-                            <option value="">Todos</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Canal:</label>
-                        <select id="channelFilter" onchange="filterVideos()">
-                            <option value="">Todos</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Fecha:</label>
-                        <input type="date" id="dateFilter" onchange="filterVideos()">
-                    </div>
-                    <div class="filter-group">
-                        <label>Hora:</label>
-                        <select id="hourFilter" onchange="filterVideos()">
-                            <option value="">Todas</option>
-                            {% for hour in range(24) %}
-                            <option value="{{ '%02d'|format(hour) }}">{{ '%02d:00'|format(hour) }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button class="btn btn-outline btn-sm" onclick="clearFilters()">
-                        <i class="fas fa-times"></i> Limpiar
-                    </button>
-                </div>
-                <div class="search-help">
-                    <button class="btn-help" onclick="toggleSearchHelp()">
-                        <i class="fas fa-question-circle"></i>
-                    </button>
-                    <div class="search-help-tooltip" id="searchHelpTooltip">
-                        <h4>Búsqueda Avanzada</h4>
-                        <p><strong>Texto libre:</strong> Busca en nombre del dispositivo</p>
-                        <p><strong>Filtros:</strong> Usa los selectores para filtrar por canal, fecha y hora</p>
-                        <p><strong>Comandos rápidos:</strong></p>
-                        <ul>
-                            <li><code>ch:2</code> - Canal 2</li>
-                            <li><code>fecha:2025-01-14</code> - Fecha específica</li>
-                            <li><code>hora:22</code> - Hora específica</li>
-                            <li><code>Casa ch:1</code> - Dispositivo Casa, Canal 1</li>
-                        </ul>
-                    </div>
+                <div class="stat-content">
+                    <span class="stat-number" id="totalVideos">{{ videos|length }}</span>
+                    <span class="stat-label">Videos</span>
                 </div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-number" id="visibleVideos">{{ videos|length }}</span>
+                    <span class="stat-label">Visibles</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-number">{{ "%.1f"|format((videos|sum(attribute='size')) / (1024*1024*1024)) }} GB</span>
+                    <span class="stat-label">Total</span>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Panel de control mejorado -->
+    <section class="control-panel">
+        <!-- Búsqueda principal -->
+        <div class="search-section">
+            <div class="search-input-container">
+                <input type="text" 
+                       id="videoSearch" 
+                       class="search-input"
+                       placeholder="Buscar por dispositivo, canal, fecha u hora..."
+                       onkeyup="filterVideos()">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+            <button class="help-button" onclick="toggleSearchHelp()" title="Ayuda de búsqueda">
+                <i class="fas fa-question-circle"></i>
+            </button>
+        </div>
+
+        <!-- Filtros organizados -->
+        <div class="filters-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">Dispositivo</label>
+                    <select id="deviceFilter" class="filter-select" onchange="filterVideos()">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Canal</label>
+                    <select id="channelFilter" class="filter-select" onchange="filterVideos()">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Fecha</label>
+                    <input type="date" id="dateFilter" class="filter-input" onchange="filterVideos()">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Hora</label>
+                    <select id="hourFilter" class="filter-select" onchange="filterVideos()">
+                        <option value="">Todas</option>
+                        {% for hour in range(24) %}
+                        <option value="{{ '%02d'|format(hour) }}">{{ '%02d:00'|format(hour) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="clear-filters-btn" onclick="clearFilters()" title="Limpiar filtros">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Controles de vista y acciones -->
+        <div class="view-controls">
             <div class="view-toggle">
-                <button class="btn-icon active" onclick="setView('grid')" id="gridViewBtn" title="Vista en cuadrícula">
+                <button class="view-btn active" onclick="setView('grid')" id="gridViewBtn" title="Vista cuadrícula">
                     <i class="fas fa-th"></i>
                 </button>
-                <button class="btn-icon" onclick="setView('list')" id="listViewBtn" title="Vista en lista">
+                <button class="view-btn" onclick="setView('list')" id="listViewBtn" title="Vista lista">
                     <i class="fas fa-list"></i>
                 </button>
             </div>
-            <a href="{{ url_for('videos') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Volver
-            </a>
+            <button class="multi-channel-btn" id="multiChannelBtn" onclick="openMultiChannelModal()" disabled>
+                <i class="fas fa-th"></i>
+                Multi-Canal
+            </button>
         </div>
-    </div>
+    </section>
 
-    <!-- Estadísticas de la carpeta -->
-    {% if videos %}
-    <div class="folder-stats">
-        <div class="stats-grid-small">
-            <div class="stat-item-small">
-                <i class="fas fa-video"></i>
-                <div>
-                    <span class="stat-number-small" id="totalVideos">{{ videos|length }}</span>
-                    <span class="stat-label-small">Videos</span>
-                </div>
-            </div>
-            <div class="stat-item-small">
-                <i class="fas fa-eye"></i>
-                <div>
-                    <span class="stat-number-small" id="visibleVideos">{{ videos|length }}</span>
-                    <span class="stat-label-small">Visibles</span>
-                </div>
-            </div>
-            <div class="stat-item-small">
-                <i class="fas fa-database"></i>
-                <div>
-                    <span class="stat-number-small">{{ "%.1f"|format((videos|sum(attribute='size')) / (1024*1024*1024)) }} GB</span>
-                    <span class="stat-label-small">Tamaño Total</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Contenedor de videos -->
-    <div class="videos-container">
+    <!-- Contenido de videos -->
+    <main class="videos-content">
         {% if videos %}
             <!-- Vista en cuadrícula -->
             <div class="videos-grid" id="videosGrid">
                 {% for v in videos %}
-                <div class="video-card" data-video-name="{{ v.name|lower }}" data-video-info="{{ v.name }}">
+                <article class="video-card" data-video-name="{{ v.name|lower }}" data-video-info="{{ v.name }}">
+                    <div class="video-selector">
+                        <input type="checkbox" 
+                               id="video-{{ loop.index }}" 
+                               class="video-checkbox"
+                               value="{{ v.path }}" 
+                               onchange="updateMultiChannelButton()">
+                        <label for="video-{{ loop.index }}" class="checkbox-label"></label>
+                    </div>
+                    
                     <div class="video-thumbnail">
-                        <div class="play-overlay">
-                            <i class="fas fa-play"></i>
-                        </div>
-                        <div class="video-duration">
-                            <i class="fas fa-clock"></i>
-                            <span>{{ "%.1f"|format(v.size / (1024*1024)) }} MB</span>
+                        <a href="{{ url_for('play_video', filename=v.path) }}" class="play-overlay" title="Reproducir video">
+    <i class="fas fa-play"></i>
+</a>
+                        <div class="video-info-overlay">
+                            <span class="video-size">{{ "%.1f"|format(v.size / (1024*1024)) }} MB</span>
                         </div>
                         <div class="video-tags" id="tags-{{ loop.index }}"></div>
                     </div>
                     
-                    <div class="video-info">
+                    <div class="video-details">
                         <h3 class="video-title" title="{{ v.name }}">{{ v.name }}</h3>
-                        <div class="video-meta">
-                            <span class="video-date">
+                        <div class="video-metadata">
+                            <div class="metadata-item">
                                 <i class="fas fa-calendar"></i>
                                 <span id="parsed-date-{{ loop.index }}">{{ v.mtime.strftime('%d/%m/%Y') }}</span>
-                            </span>
-                            <span class="video-time">
+                            </div>
+                            <div class="metadata-item">
                                 <i class="fas fa-clock"></i>
                                 <span id="parsed-time-{{ loop.index }}">{{ v.mtime.strftime('%H:%M') }}</span>
-                            </span>
+                            </div>
                         </div>
-                        <div class="video-parsed-info" id="parsed-info-{{ loop.index }}"></div>
+                        <div class="parsed-info" id="parsed-info-{{ loop.index }}"></div>
                     </div>
                     
                     <div class="video-actions">
-                        <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
+                        <a class="action-btn primary" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
                             <i class="fas fa-play"></i>
                         </a>
-                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
+                        <a class="action-btn secondary" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
                             <i class="fas fa-download"></i>
                         </a>
-                        <button class="btn btn-outline btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Información">
+                        <button class="action-btn tertiary" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Información">
                             <i class="fas fa-info"></i>
                         </button>
                     </div>
-                </div>
+                </article>
                 {% endfor %}
             </div>
 
             <!-- Vista en lista -->
             <div class="videos-list" id="videosList" style="display: none;">
                 <div class="list-header">
-                    <div class="col-name">Nombre</div>
-                    <div class="col-device">Dispositivo</div>
-                    <div class="col-channel">Canal</div>
-                    <div class="col-date">Fecha/Hora</div>
-                    <div class="col-size">Tamaño</div>
-                    <div class="col-actions">Acciones</div>
+                    <div class="list-col col-select"></div>
+                    <div class="list-col col-name">Nombre</div>
+                    <div class="list-col col-device">Dispositivo</div>
+                    <div class="list-col col-channel">Canal</div>
+                    <div class="list-col col-datetime">Fecha/Hora</div>
+                    <div class="list-col col-size">Tamaño</div>
+                    <div class="list-col col-actions">Acciones</div>
                 </div>
                 {% for v in videos %}
-                <div class="video-row" data-video-name="{{ v.name|lower }}" data-video-info="{{ v.name }}">
-                    <div class="col-name">
+                <div class="list-row" data-video-name="{{ v.name|lower }}" data-video-info="{{ v.name }}">
+                    <div class="list-col col-select">
+                        <input type="checkbox" 
+                               id="video-list-{{ loop.index }}" 
+                               class="video-checkbox"
+                               value="{{ v.path }}" 
+                               onchange="updateMultiChannelButton()">
+                        <label for="video-list-{{ loop.index }}" class="checkbox-label"></label>
+                    </div>
+                    <div class="list-col col-name">
                         <i class="fas fa-video"></i>
                         <span class="video-name" title="{{ v.name }}">{{ v.name }}</span>
                     </div>
-                    <div class="col-device" id="list-device-{{ loop.index }}">-</div>
-                    <div class="col-channel" id="list-channel-{{ loop.index }}">-</div>
-                    <div class="col-date">
-                        <div class="date-info">
+                    <div class="list-col col-device" id="list-device-{{ loop.index }}">-</div>
+                    <div class="list-col col-channel" id="list-channel-{{ loop.index }}">-</div>
+                    <div class="list-col col-datetime">
+                        <div class="datetime-info">
                             <span class="date" id="list-date-{{ loop.index }}">{{ v.mtime.strftime('%d/%m/%Y') }}</span>
                             <span class="time" id="list-time-{{ loop.index }}">{{ v.mtime.strftime('%H:%M') }}</span>
                         </div>
                     </div>
-                    <div class="col-size">{{ "%.1f"|format(v.size / (1024*1024)) }} MB</div>
-                    <div class="col-actions">
-                        <a class="btn btn-primary btn-sm" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
+                    <div class="list-col col-size">{{ "%.1f"|format(v.size / (1024*1024)) }} MB</div>
+                    <div class="list-col col-actions">
+                        <a class="action-btn primary small" href="{{ url_for('play_video', filename=v.path) }}" title="Reproducir">
                             <i class="fas fa-play"></i>
                         </a>
-                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
+                        <a class="action-btn secondary small" href="{{ url_for('download_video', filename=v.path) }}" title="Descargar">
                             <i class="fas fa-download"></i>
                         </a>
-                        <button class="btn btn-outline btn-sm" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Info">
+                        <button class="action-btn tertiary small" onclick="showVideoInfo('{{ v.name }}', '{{ "%.2f"|format(v.size / (1024*1024)) }}', '{{ v.mtime.strftime('%Y-%m-%d %H:%M:%S') }}')" title="Info">
                             <i class="fas fa-info"></i>
                         </button>
                     </div>
@@ -205,310 +241,490 @@
             </div>
         {% else %}
             <div class="empty-state">
-                <i class="fas fa-video-slash"></i>
-                <div class="empty-message">
+                <div class="empty-icon">
+                    <i class="fas fa-video-slash"></i>
+                </div>
+                <div class="empty-content">
                     <h3>Sin videos en esta carpeta</h3>
                     <p>Esta carpeta no contiene archivos de video o están siendo procesados</p>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt"></i>
+                        Actualizar
+                    </button>
                 </div>
-                <button class="btn btn-secondary" onclick="location.reload()">
-                    <i class="fas fa-sync-alt"></i> Actualizar
-                </button>
             </div>
         {% endif %}
+    </main>
+</div>
+
+<!-- Tooltip de ayuda -->
+<div class="search-help-tooltip" id="searchHelpTooltip">
+    <div class="tooltip-content">
+        <h4>Búsqueda Avanzada</h4>
+        <div class="help-section">
+            <p><strong>Texto libre:</strong> Busca en nombre del dispositivo</p>
+            <p><strong>Filtros:</strong> Usa los selectores para filtrar</p>
+        </div>
+        <div class="help-section">
+            <p><strong>Comandos rápidos:</strong></p>
+            <ul>
+                <li><code>ch:2</code> - Canal 2</li>
+                <li><code>fecha:2025-01-14</code> - Fecha específica</li>
+                <li><code>hora:22</code> - Hora específica</li>
+                <li><code>Casa ch:1</code> - Dispositivo Casa, Canal 1</li>
+            </ul>
+        </div>
     </div>
 </div>
 
 <!-- Modal de información -->
-<div class="modal" id="videoInfoModal" style="display: none;">
-    <div class="modal-backdrop" onclick="closeVideoInfo()"></div>
-    <div class="modal-content">
+<div class="modal-overlay" id="videoInfoModal" style="display: none;">
+    <div class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-info-circle"></i> Información del Video</h3>
-            <button class="btn-close" onclick="closeVideoInfo()">
+            <button class="modal-close" onclick="closeVideoInfo()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="modal-body">
-            <div class="info-row">
-                <strong>Nombre:</strong>
-                <span id="modalVideoName"></span>
-            </div>
-            <div class="info-row">
-                <strong>Tamaño:</strong>
-                <span id="modalVideoSize"></span>
-            </div>
-            <div class="info-row">
-                <strong>Fecha:</strong>
-                <span id="modalVideoDate"></span>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Nombre:</strong>
+                    <span id="modalVideoName"></span>
+                </div>
+                <div class="info-item">
+                    <strong>Tamaño:</strong>
+                    <span id="modalVideoSize"></span>
+                </div>
+                <div class="info-item">
+                    <strong>Fecha:</strong>
+                    <span id="modalVideoDate"></span>
+                </div>
             </div>
             <div id="modalParsedInfo"></div>
         </div>
     </div>
 </div>
 
+<!-- Modal Multi-Canal -->
+<div class="modal-overlay" id="multiChannelModal" style="display: none;">
+    <div class="modal large">
+        <div class="modal-header">
+            <h3><i class="fas fa-th"></i> Configurar Vista Multi-Canal</h3>
+            <button class="modal-close" onclick="closeMultiChannelModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="multi-channel-config">
+                <section class="config-section">
+                    <h4>Videos Seleccionados</h4>
+                    <div id="selectedVideosList" class="selected-videos"></div>
+                </section>
+                
+                <section class="config-section">
+                    <h4>Layout de Cuadrícula</h4>
+                    <div class="layout-grid">
+                        <button class="layout-option active" data-layout="2x2" onclick="selectLayout('2x2')">
+                            <div class="layout-preview grid-2x2"></div>
+                            <span>2x2 (4 canales)</span>
+                        </button>
+                        <button class="layout-option" data-layout="3x3" onclick="selectLayout('3x3')">
+                            <div class="layout-preview grid-3x3"></div>
+                            <span>3x3 (9 canales)</span>
+                        </button>
+                        <button class="layout-option" data-layout="4x4" onclick="selectLayout('4x4')">
+                            <div class="layout-preview grid-4x4"></div>
+                            <span>4x4 (16 canales)</span>
+                        </button>
+                    </div>
+                </section>
+                
+                <section class="config-section">
+                    <h4>Opciones</h4>
+                    <div class="options-grid">
+                        <label class="option">
+                            <input type="checkbox" id="syncPlayback" checked>
+                            <span>Sincronizar reproducción</span>
+                        </label>
+                        <label class="option">
+                            <input type="checkbox" id="autoConvert" checked>
+                            <span>Convertir archivos DAV</span>
+                        </label>
+                        <label class="option">
+                            <input type="checkbox" id="adaptiveQuality" checked>
+                            <span>Calidad adaptativa</span>
+                        </label>
+                    </div>
+                </section>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="startMultiChannelView()">
+                <i class="fas fa-play"></i>
+                Iniciar Vista Multi-Canal
+            </button>
+            <button class="btn btn-secondary" onclick="closeMultiChannelModal()">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
-.videos-page {
-    padding: 0;
+/* Variables CSS respetando colores originales */
+:root {
+    --accent-primary: #3b82f6;
+    --accent-secondary: #10b981;
+    --accent-muted: #6b7280;
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #2a2a2a;
+    --bg-elevated: #333333;
+    --bg-hover: rgba(255, 255, 255, 0.05);
+    --text-primary: #ffffff;
+    --text-secondary: #e5e5e5;
+    --text-muted: #a3a3a3;
+    --text-error: #ef4444;
+    --border-primary: #404040;
+    --border-secondary: #333333;
+    --border-subtle: #262626;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --blur-sm: blur(4px);
+    --blur-md: blur(8px);
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --transition: all 0.2s ease;
 }
 
-.header-left {
-    flex: 1;
+/* Reset y base */
+.video-library {
+    min-height: 100vh;
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
-.folder-real-name {
+/* Header mejorado */
+.library-header {
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: var(--blur-sm);
+    border-bottom: 1px solid var(--border-secondary);
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.library-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-primary);
+}
+
+.library-title i {
+    color: var(--accent-secondary);
+}
+
+.folder-subtitle {
     font-size: 1rem;
-    color: var(--text-muted);
     font-weight: 400;
+    color: var(--text-muted);
     margin-left: 0.5rem;
 }
 
 .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-    font-size: 0.9rem;
-    color: var(--text-muted);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
 }
 
-.breadcrumb a {
+.breadcrumb-link {
     color: var(--accent-secondary);
     text-decoration: none;
-    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
 }
 
-.breadcrumb a:hover {
+.breadcrumb-link:hover {
     color: var(--text-primary);
 }
 
-.search-container {
+.breadcrumb-current {
+    color: var(--text-muted);
+}
+
+/* Estadísticas compactas */
+.stats-section {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-primary);
+}
+
+.stat-icon {
+    width: 3rem;
+    height: 3rem;
+    background: var(--accent-secondary);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: var(--bg-primary);
+    opacity: 0.9;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+    line-height: 1;
+    letter-spacing: -0.025em;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Panel de control mejorado */
+.control-panel {
+    max-width: 1400px;
+    margin: 0 auto 2rem;
+    padding: 0 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    flex: 1;
-    max-width: 800px;
+    gap: 1.5rem;
 }
 
-.search-box {
-    position: relative;
-    flex: 1;
-}
-
-.search-filters {
+.search-section {
     display: flex;
     gap: 1rem;
     align-items: center;
-    flex-wrap: wrap;
-    padding: 1rem;
-    background: rgba(26, 26, 26, 0.6);
+}
+
+.search-input-container {
+    flex: 1;
+    position: relative;
+    max-width: 600px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.875rem 1rem 0.875rem 3rem;
+    background: rgba(26, 26, 26, 0.8);
     border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.help-button {
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    padding: 0.875rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.help-button:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.filters-section {
+    background: rgba(26, 26, 26, 0.6);
     backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    align-items: end;
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    min-width: 120px;
+    gap: 0.5rem;
 }
 
-.filter-group label {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+.filter-label {
+    font-size: 0.875rem;
     font-weight: 500;
+    color: var(--text-muted);
 }
 
-.filter-group select,
-.filter-group input {
-    padding: 0.5rem;
+.filter-select,
+.filter-input {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
     border: 1px solid var(--border-secondary);
     border-radius: var(--radius-md);
-    background: var(--bg-tertiary);
     color: var(--text-primary);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
+    transition: var(--transition);
 }
 
-.search-help {
-    position: relative;
+.filter-select:focus,
+.filter-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
 }
 
-.btn-help {
-    background: none;
+.clear-filters-btn {
+    background: var(--text-error);
     border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 0.5rem;
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    padding: 0.75rem;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition);
+    height: fit-content;
 }
 
-.btn-help:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+.clear-filters-btn:hover {
+    background: #dc2626;
 }
 
-.search-help-tooltip {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: rgba(26, 26, 26, 0.95);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    min-width: 300px;
-    z-index: 1000;
-    display: none;
-    backdrop-filter: var(--blur-md);
-    box-shadow: var(--shadow-lg);
-}
-
-.search-help-tooltip h4 {
-    margin: 0 0 1rem 0;
-    color: var(--text-primary);
-    font-size: 1rem;
-}
-
-.search-help-tooltip p {
-    margin: 0.5rem 0;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-
-.search-help-tooltip ul {
-    margin: 0.5rem 0;
-    padding-left: 1rem;
-}
-
-.search-help-tooltip li {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin: 0.25rem 0;
-}
-
-.search-help-tooltip code {
-    background: var(--bg-tertiary);
-    padding: 0.2rem 0.4rem;
-    border-radius: var(--radius-sm);
-    font-family: monospace;
-    color: var(--accent-primary);
-}
-
-.video-tags {
-    position: absolute;
-    top: 12px;
-    left: 12px;
+.view-controls {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.video-tag {
-    background: rgba(0, 0, 0, 0.8);
-    color: var(--text-primary);
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.7rem;
-    font-weight: 500;
-    backdrop-filter: var(--blur-sm);
-}
-
-.video-tag.device {
-    background: rgba(59, 130, 246, 0.8);
-}
-
-.video-tag.channel {
-    background: rgba(16, 185, 129, 0.8);
-}
-
-.video-parsed-info {
-    margin-top: 0.5rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.parsed-detail {
-    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.25rem;
-}
-
-.parsed-detail i {
-    color: var(--accent-muted);
-    opacity: 0.8;
+    gap: 1rem;
 }
 
 .view-toggle {
     display: flex;
+    background: var(--bg-tertiary);
     border: 1px solid var(--border-secondary);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    background: var(--bg-tertiary);
 }
 
-.view-toggle .btn-icon {
-    border: none;
+.view-btn {
     background: transparent;
-    padding: 0.75rem;
+    border: none;
+    padding: 0.75rem 1rem;
+    color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 0;
+    transition: var(--transition);
 }
 
-.view-toggle .btn-icon.active {
+.view-btn.active {
     background: var(--accent-primary);
     color: var(--bg-primary);
 }
 
-.folder-stats {
-    background: rgba(26, 26, 26, 0.6);
-    backdrop-filter: var(--blur-sm);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-xl);
-    padding: 2rem;
-    margin-bottom: 3rem;
-}
-
-.stats-grid-small {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2rem;
-}
-
-.stat-item-small {
+.multi-channel-btn {
+    background: var(--accent-secondary);
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1.5rem;
+    color: var(--bg-primary);
+    cursor: pointer;
+    font-weight: 500;
+    transition: var(--transition);
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
-.stat-item-small i {
-    font-size: 1.75rem;
-    color: var(--accent-secondary);
-    opacity: 0.8;
-}
-
-.stat-number-small {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: block;
-    letter-spacing: -0.025em;
-}
-
-.stat-label-small {
-    font-size: 0.85rem;
+.multi-channel-btn:disabled {
+    background: var(--bg-tertiary);
     color: var(--text-muted);
-    font-weight: 500;
+    cursor: not-allowed;
 }
 
-/* Vista en cuadrícula */
+.multi-channel-btn:not(:disabled):hover {
+    background: #059669;
+}
+
+/* Contenido de videos */
+.videos-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1.5rem 2rem;
+}
+
+/* Vista en cuadrícula mejorada */
 .videos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 2rem;
+    gap: 1.5rem;
 }
 
 .video-card {
@@ -543,79 +759,162 @@
     opacity: 1;
 }
 
+.video-selector {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+}
+
+.video-checkbox {
+    display: none;
+}
+
+.checkbox-label {
+    display: block;
+    width: 24px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid var(--border-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    position: relative;
+    transition: var(--transition);
+}
+
+.video-checkbox:checked + .checkbox-label {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.video-checkbox:checked + .checkbox-label::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 6px;
+    width: 6px;
+    height: 12px;
+    border: solid var(--text-primary);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
 .video-thumbnail {
     position: relative;
-    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
     height: 180px;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
 }
 
 .play-overlay {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 60px;
     height: 60px;
     background: rgba(255, 255, 255, 0.9);
     border-radius: 50%;
-    color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.5rem;
+    color: var(--bg-primary);
     transition: all 0.3s ease;
 }
 
 .video-card:hover .play-overlay {
-    transform: scale(1.1);
     background: var(--accent-primary);
+    color: var(--text-primary);
+    transform: scale(1.1);
 }
 
-.video-duration {
+.video-info-overlay {
     position: absolute;
-    bottom: 12px;
-    right: 12px;
+    bottom: 1rem;
+    right: 1rem;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: var(--blur-sm);
-    color: var(--text-primary);
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-md);
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
     font-weight: 500;
 }
 
-.video-info {
+.video-tags {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.video-tag {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: var(--blur-sm);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.video-tag.device {
+    background: rgba(59, 130, 246, 0.8);
+}
+
+.video-tag.channel {
+    background: rgba(16, 185, 129, 0.8);
+}
+
+.video-details {
     padding: 1.5rem;
 }
 
 .video-title {
-    margin: 0 0 1rem 0;
-    font-size: 1.1rem;
-    color: var(--text-primary);
+    font-size: 1.125rem;
     font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.video-meta {
+.video-metadata {
     display: flex;
     justify-content: space-between;
     margin-bottom: 1rem;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     color: var(--text-muted);
 }
 
-.video-meta span {
+.metadata-item {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.video-meta i {
+.metadata-item i {
+    color: var(--accent-muted);
+    opacity: 0.8;
+}
+
+.parsed-info {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.parsed-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.parsed-detail i {
     color: var(--accent-muted);
     opacity: 0.8;
 }
@@ -629,7 +928,54 @@
     background: rgba(17, 17, 17, 0.3);
 }
 
-/* Vista en lista */
+.action-btn {
+    padding: 0.75rem;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    min-width: 44px;
+}
+
+.action-btn.primary {
+    background: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.action-btn.primary:hover {
+    background: #1d4ed8;
+}
+
+.action-btn.secondary {
+    background: var(--accent-muted);
+    color: var(--text-primary);
+}
+
+.action-btn.secondary:hover {
+    background: #4b5563;
+}
+
+.action-btn.tertiary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.action-btn.tertiary:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.action-btn.small {
+    padding: 0.5rem;
+    min-width: 36px;
+}
+
+/* Vista en lista mejorada */
 .videos-list {
     background: rgba(26, 26, 26, 0.6);
     backdrop-filter: var(--blur-sm);
@@ -640,39 +986,46 @@
 
 .list-header {
     display: grid;
-    grid-template-columns: 2fr 1fr 0.8fr 1fr 0.8fr 1fr;
+    grid-template-columns: 50px 2fr 1fr 0.8fr 1.2fr 0.8fr 1fr;
     gap: 1rem;
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
     background: rgba(17, 17, 17, 0.5);
     font-weight: 600;
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border-subtle);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
-.video-row {
+.list-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 0.8fr 1fr 0.8fr 1fr;
+    grid-template-columns: 50px 2fr 1fr 0.8fr 1.2fr 0.8fr 1fr;
     gap: 1rem;
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-subtle);
     align-items: center;
-    transition: background-color 0.2s ease;
+    transition: var(--transition);
 }
 
-.video-row:hover {
+.list-row:hover {
     background: var(--bg-hover);
 }
 
-.video-row:last-child {
+.list-row:last-child {
     border-bottom: none;
 }
 
-.col-name {
+.list-col {
     display: flex;
     align-items: center;
+}
+
+.col-select {
+    justify-content: center;
+}
+
+.col-name {
     gap: 0.75rem;
 }
 
@@ -695,63 +1048,139 @@
     color: var(--text-secondary);
 }
 
-.date-info {
+.datetime-info {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
-.date-info .time {
-    font-size: 0.8rem;
+.datetime-info .time {
+    font-size: 0.75rem;
     color: var(--text-muted);
 }
 
 .col-actions {
-    display: flex;
     gap: 0.5rem;
 }
 
-/* Modal */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
+/* Estado vacío */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
 }
 
-.modal-backdrop {
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 2rem;
+    opacity: 0.5;
+}
+
+.empty-content h3 {
+    font-size: 1.5rem;
+    margin: 0 0 1rem 0;
+    color: var(--text-secondary);
+}
+
+.empty-content p {
+    margin: 0 0 2rem 0;
+    font-size: 1rem;
+}
+
+/* Tooltip de ayuda */
+.search-help-tooltip {
     position: absolute;
+    top: 100%;
+    right: 0;
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: var(--blur-md);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    min-width: 320px;
+    z-index: 1000;
+    display: none;
+    box-shadow: var(--shadow-lg);
+    margin-top: 0.5rem;
+}
+
+.tooltip-content h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.help-section {
+    margin-bottom: 1rem;
+}
+
+.help-section:last-child {
+    margin-bottom: 0;
+}
+
+.help-section p {
+    margin: 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.help-section ul {
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+}
+
+.help-section li {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0;
+}
+
+.help-section code {
+    background: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-family: monospace;
+    color: var(--accent-primary);
+    font-size: 0.8rem;
+}
+
+/* Modales */
+.modal-overlay {
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: var(--blur-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
 }
 
-.modal-content {
+.modal {
     background: rgba(26, 26, 26, 0.95);
     backdrop-filter: var(--blur-md);
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-xl);
     max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
+    width: 100%;
+    max-height: 90vh;
     overflow-y: auto;
-    position: relative;
-    z-index: 1001;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal.large {
+    max-width: 800px;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 2rem;
+    padding: 1.5rem;
     border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -764,7 +1193,7 @@
     font-weight: 600;
 }
 
-.btn-close {
+.modal-close {
     background: none;
     border: none;
     font-size: 1.25rem;
@@ -772,64 +1201,278 @@
     color: var(--text-muted);
     padding: 0.5rem;
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    transition: var(--transition);
 }
 
-.btn-close:hover {
+.modal-close:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
 }
 
 .modal-body {
-    padding: 2rem;
+    padding: 1.5rem;
 }
 
-.info-row {
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(17, 17, 17, 0.3);
+}
+
+/* Info grid en modal */
+.info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-item {
     display: flex;
     justify-content: space-between;
-    padding: 1rem 0;
+    align-items: center;
+    padding: 0.75rem 0;
     border-bottom: 1px solid var(--border-subtle);
 }
 
-.info-row:last-child {
+.info-item:last-child {
     border-bottom: none;
 }
 
-.info-row strong {
+.info-item strong {
     color: var(--text-secondary);
     font-weight: 600;
 }
 
-.info-row span {
+.info-item span {
     color: var(--text-primary);
 }
 
-@media (max-width: 768px) {
-    .page-header {
+/* Multi-canal config */
+.multi-channel-config {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.config-section h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.selected-videos {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-secondary);
+}
+
+.selected-video-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+}
+
+.selected-video-item i {
+    color: var(--accent-muted);
+}
+
+.selected-video-item .video-name {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.btn-remove:hover {
+    background: var(--bg-hover);
+    color: var(--text-error);
+}
+
+.layout-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.layout-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+}
+
+.layout-option:hover {
+    border-color: var(--border-primary);
+    background: var(--bg-elevated);
+}
+
+.layout-option.active {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.layout-preview {
+    width: 60px;
+    height: 60px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    position: relative;
+    border: 1px solid var(--border-subtle);
+}
+
+.grid-2x2::before,
+.grid-3x3::before,
+.grid-4x4::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 80%;
+    background-image: 
+        linear-gradient(var(--accent-muted) 1px, transparent 1px),
+        linear-gradient(90deg, var(--accent-muted) 1px, transparent 1px);
+}
+
+.grid-2x2::before {
+    background-size: 50% 50%;
+}
+
+.grid-3x3::before {
+    background-size: 33.33% 33.33%;
+}
+
+.grid-4x4::before {
+    background-size: 25% 25%;
+}
+
+.layout-option span {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.layout-option.active span {
+    color: var(--text-primary);
+}
+
+.options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.option:hover {
+    background: var(--bg-hover);
+}
+
+.option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-primary);
+}
+
+.option span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Botones generales */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-secondary {
+    background: var(--accent-muted);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .header-content {
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 1rem;
+        text-align: center;
     }
     
-    .header-actions {
-        flex-direction: column;
-        width: 100%;
+    .stats-container {
+        grid-template-columns: 1fr;
     }
     
-    .search-container {
-        max-width: none;
+    .filter-row {
+        grid-template-columns: 1fr;
     }
     
-    .search-filters {
+    .view-controls {
         flex-direction: column;
         align-items: stretch;
-    }
-    
-    .filter-group {
-        min-width: auto;
-    }
-    
-    .stats-grid-small {
-        grid-template-columns: 1fr;
     }
     
     .videos-grid {
@@ -837,7 +1480,7 @@
     }
     
     .list-header,
-    .video-row {
+    .list-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
     }
@@ -846,32 +1489,52 @@
         display: none;
     }
     
-    .video-row {
+    .list-row {
         display: block;
         padding: 1.5rem;
     }
     
-    .col-name,
-    .col-device,
-    .col-channel,
-    .col-date,
-    .col-size,
-    .col-actions {
+    .list-col {
         margin-bottom: 0.75rem;
+        justify-content: flex-start;
     }
     
     .col-actions {
         justify-content: center;
     }
     
-    .modal-content {
-        margin: 1rem;
-        width: calc(100% - 2rem);
+    .layout-grid {
+        grid-template-columns: 1fr;
     }
     
-    .modal-header,
-    .modal-body {
-        padding: 1.5rem;
+    .modal-footer {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 640px) {
+    .control-panel,
+    .videos-content,
+    .stats-section {
+        padding: 0 1rem;
+    }
+    
+    .header-content {
+        padding: 0 1rem;
+    }
+    
+    .search-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-input-container {
+        max-width: none;
+    }
+    
+    .modal {
+        margin: 0.5rem;
+        width: calc(100% - 1rem);
     }
     
     .search-help-tooltip {
@@ -883,73 +1546,46 @@
 </style>
 
 <script>
+// Variables globales
 let currentView = 'grid';
 let videoData = [];
 let allDevices = new Set();
 let allChannels = new Set();
+let selectedLayout = '2x2';
 
-// Función para formatear fecha
-function formatDate(dateStr) {
-    if (!dateStr) return 'N/A';
-    
-    if (dateStr.length === 8) {
-        const year = dateStr.substring(0, 4);
-        const month = dateStr.substring(4, 6);
-        const day = dateStr.substring(6, 8);
-        
-        // Validar que sean números válidos
-        if (isNaN(year) || isNaN(month) || isNaN(day)) {
-            return 'N/A';
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    initializeVideoData();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Cerrar tooltips y modales con Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeVideoInfo();
+            closeMultiChannelModal();
+            document.getElementById('searchHelpTooltip').style.display = 'none';
         }
+    });
+    
+    // Cerrar tooltip al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        const helpButton = document.querySelector('.help-button');
+        const tooltip = document.getElementById('searchHelpTooltip');
         
-        return `${day}/${month}/${year}`;
-    }
-    return 'N/A';
-}
-
-// Función para formatear hora
-function formatTime(timeStr) {
-    if (timeStr.length === 6) {
-        const hour = timeStr.substring(0, 2);
-        const minute = timeStr.substring(2, 4);
-        return `${hour}:${minute}`;
-    }
-    return timeStr;
-}
-
-// Función para poblar los filtros de dispositivo y canal
-function populateFilters() {
-    const deviceFilter = document.getElementById('deviceFilter');
-    const channelFilter = document.getElementById('channelFilter');
-
-    // Limpiar opciones existentes (excepto "Todos")
-    deviceFilter.innerHTML = '<option value="">Todos</option>';
-    channelFilter.innerHTML = '<option value="">Todos</option>';
-
-    // Añadir dispositivos
-    Array.from(allDevices).sort().forEach(device => {
-        const option = document.createElement('option');
-        option.value = device;
-        option.textContent = device;
-        deviceFilter.appendChild(option);
-    });
-
-    // Añadir canales
-    Array.from(allChannels).sort((a, b) => a - b).forEach(channel => {
-        const option = document.createElement('option');
-        option.value = channel;
-        option.textContent = `CH${channel}`;
-        channelFilter.appendChild(option);
+        if (helpButton && tooltip && !helpButton.contains(e.target) && !tooltip.contains(e.target)) {
+            tooltip.style.display = 'none';
+        }
     });
 }
 
-
-// Inicializar datos de video al cargar la página
+// Inicializar datos de video
 function initializeVideoData() {
-    console.log('🚀 INITIALIZING VIDEO DATA');
+    console.log('🚀 Inicializando datos de video');
     
     const videoCards = document.querySelectorAll('.video-card');
-    const videoRows = document.querySelectorAll('.video-row');
+    const videoRows = document.querySelectorAll('.list-row');
     
     videoData = [];
     allDevices.clear();
@@ -968,13 +1604,10 @@ function initializeVideoData() {
             allChannels.add(parsed.channel);
         } else {
             invalidCount++;
-            console.warn(`❌ Invalid file ${index + 1}: ${filename} - ${parsed.error}`);
-            console.warn(`   Please ensure filename matches format: Device_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext`);
+            console.warn(`❌ Archivo inválido ${index + 1}: ${filename}`);
         }
         
-        // Actualizar información visual para ambas vistas
         updateVideoDisplay(video, videoRows[index], parsed, index + 1);
-
         videoData.push({
             gridElement: video,
             listElement: videoRows[index],
@@ -984,144 +1617,85 @@ function initializeVideoData() {
         });
     });
     
-    console.log('📊 SUMMARY:');
-    console.log(`✅ Valid files: ${validCount}`);
-    console.log(`❌ Invalid files: ${invalidCount}`);
-    console.log('🏠 Devices found:', Array.from(allDevices));
-    console.log('📺 Channels found:', Array.from(allChannels));
+    console.log(`✅ Archivos válidos: ${validCount}, ❌ Inválidos: ${invalidCount}`);
+    console.log('🏠 Dispositivos:', Array.from(allDevices));
+    console.log('📺 Canales:', Array.from(allChannels));
     
-    // Poblar filtros
     populateFilters();
 }
 
-// Función mejorada para parsear el nombre del archivo con debugging
+// Parsear nombre de archivo
 function parseVideoFilename(filename) {
-    console.log(`=== PARSING: ${filename} ===`);
+    console.log(`Parseando: ${filename}`);
     
-    // Formato esperado: Casa_ch2_main_20250714220000_20250714230000.dav
     const regex = /^(.+?)_ch(\d+)_main_(\d{8})(\d{6})_(\d{8})(\d{6})\.(.+)$/;
     const match = filename.match(regex);
     
     if (!match) {
-        console.log('❌ Regex no coincide');
-        return { isValid: false, error: 'Filename format not recognized' };
+        return { isValid: false, error: 'Formato de nombre no reconocido' };
     }
     
-    const [fullMatch, device, channel, startDate, startTime, endDate, endTime, extension] = match;
-    console.log('✅ Regex match:', {
-        device, channel, startDate, startTime, endDate, endTime, extension
-    });
+    const [, device, channel, startDate, startTime, endDate, endTime, extension] = match;
     
     try {
-        // Parsear fecha y hora de inicio
+        // Parse date components
         const year = parseInt(startDate.substring(0, 4));
-        const month = parseInt(startDate.substring(4, 6));
+        const month = parseInt(startDate.substring(4, 6)) - 1; // Months are 0-based in JavaScript
         const day = parseInt(startDate.substring(6, 8));
         const hour = parseInt(startTime.substring(0, 2));
         const minute = parseInt(startTime.substring(2, 4));
         const second = parseInt(startTime.substring(4, 6));
         
-        console.log('📅 Parsed values:', { year, month, day, hour, minute, second });
+        // Validate ranges
+        if (year < 1900 || year > 2100) return { isValid: false, error: 'Año inválido' };
+        if (month < 0 || month > 11) return { isValid: false, error: 'Mes inválido' }; 
+        if (day < 1 || day > 31) return { isValid: false, error: 'Día inválido' };
+        if (hour < 0 || hour > 23) return { isValid: false, error: 'Hora inválida' };
+        if (minute < 0 || minute > 59) return { isValid: false, error: 'Minutos inválidos' };
+        if (second < 0 || second > 59) return { isValid: false, error: 'Segundos inválidos' };
         
-        // Validar que los valores sean válidos
-        if (year < 1900 || year > 2100) {
-            console.log('❌ Invalid year:', year);
-            return { isValid: false, error: `Invalid year: ${year}` };
-        }
-        if (month < 1 || month > 12) {
-            console.log('❌ Invalid month:', month);
-            return { isValid: false, error: `Invalid month: ${month}` };
-        }
-        if (day < 1 || day > 31) {
-            console.log('❌ Invalid day:', day);
-            return { isValid: false, error: `Invalid day: ${day}` };
-        }
-        if (hour < 0 || hour > 23) {
-            console.log('❌ Invalid hour:', hour);
-            return { isValid: false, error: `Invalid hour: ${hour}` };
-        }
-        if (minute < 0 || minute > 59) {
-            console.log('❌ Invalid minute:', minute);
-            return { isValid: false, error: `Invalid minute: ${minute}` };
-        }
-        if (second < 0 || second > 59) {
-            console.log('❌ Invalid second:', second);
-            return { isValid: false, error: `Invalid second: ${second}` };
-        }
+        // Create date object
+        const startDateTime = new Date(year, month, day, hour, minute, second);
         
-        console.log('✅ All values are valid');
-        
-        // Crear fecha usando mes base-1 para JavaScript
-        const startDateTime = new Date(year, month - 1, day, hour, minute, second);
-        console.log('📅 Created date:', startDateTime);
-        
-        // Verificar que la fecha se creó correctamente
+        // Validate date is valid
         if (isNaN(startDateTime.getTime())) {
-            console.log('❌ Failed to create valid date');
-            return { isValid: false, error: 'Failed to create date' };
+            return { isValid: false, error: 'Fecha inválida' };
         }
         
-        // Verificar que la fecha creada coincide con los valores originales
-        if (startDateTime.getFullYear() !== year || 
-            startDateTime.getMonth() !== (month - 1) || 
-            startDateTime.getDate() !== day ||
-            startDateTime.getHours() !== hour ||
-            startDateTime.getMinutes() !== minute ||
-            startDateTime.getSeconds() !== second) {
-            console.log('❌ Date validation failed - created date doesn\'t match input');
-            console.log('Expected:', { year, month: month-1, day, hour, minute, second });
-            console.log('Got:', { 
-                year: startDateTime.getFullYear(), 
-                month: startDateTime.getMonth(), 
-                day: startDateTime.getDate(),
-                hour: startDateTime.getHours(),
-                minute: startDateTime.getMinutes(),
-                second: startDateTime.getSeconds()
-            });
-            return { isValid: false, error: 'Date validation failed' };
-        }
-        
-        const result = {
+        return {
             device: device,
             channel: parseInt(channel),
-            startDate: startDate, // YYYYMMDD
-            startTime: startTime, // HHMMSS
+            startDate: startDate,
+            startTime: startTime,
             endDate: endDate,
             endTime: endTime,
             startDateTime: startDateTime,
             hour: hour,
             day: day,
-            month: month,
+            month: month + 1, // Convert back to 1-based for display
             year: year,
             extension: extension,
             isValid: true
         };
-        
-        console.log('✅ SUCCESS - Final result:', result);
-        return result;
-        
     } catch (error) {
-        console.error(`❌ ERROR parsing ${filename}:`, error);
+        console.error('Error parsing date:', error);
         return { isValid: false, error: error.message };
     }
 }
 
-// Actualizar la visualización del video con información parseada
+// Actualizar visualización del video
 function updateVideoDisplay(gridElement, listElement, parsed, index) {
-    // Elementos de la vista de cuadrícula
     const tagsContainer = document.getElementById(`tags-${index}`);
     const parsedDateElement = document.getElementById(`parsed-date-${index}`);
     const parsedTimeElement = document.getElementById(`parsed-time-${index}`);
     const parsedInfoElement = document.getElementById(`parsed-info-${index}`);
     
-    // Elementos de la vista de lista
     const listDevice = document.getElementById(`list-device-${index}`);
     const listChannel = document.getElementById(`list-channel-${index}`);
     const listDate = document.getElementById(`list-date-${index}`);
     const listTime = document.getElementById(`list-time-${index}`);
-
+    
     if (parsed.isValid) {
-        // Actualizar tags en vista de cuadrícula
         if (tagsContainer) {
             tagsContainer.innerHTML = `
                 <span class="video-tag device">${parsed.device}</span>
@@ -1129,44 +1703,23 @@ function updateVideoDisplay(gridElement, listElement, parsed, index) {
             `;
         }
         
-        // Actualizar fecha y hora parseadas en grid
-        if (parsedDateElement && parsed.isValid) {
-            parsedDateElement.textContent = convertirFecha(parsed.startDate);
-        }
-        if (parsedTimeElement && parsed.isValid) {
-            parsedTimeElement.textContent = formatTime(parsed.startTime);
-        }
+        // Formatear fecha y hora usando los valores del objeto parsed
+        const formattedDate = `${parsed.day.toString().padStart(2, '0')}/${parsed.month.toString().padStart(2, '0')}/${parsed.year}`;
+        const formattedTime = `${parsed.hour.toString().padStart(2, '0')}:${parsed.minute?.toString().padStart(2, '0') || '00'}`;
         
-        // Actualizar información adicional en grid
-        if (parsedInfoElement) {
-            parsedInfoElement.innerHTML = `
-                <div class="parsed-detail">
-                    <i class="fas fa-desktop"></i>
-                    <span>${parsed.device}</span>
-                </div>
-                <div class="parsed-detail">
-                    <i class="fas fa-tv"></i>
-                    <span>Canal ${parsed.channel}</span>
-                </div>
-            `;
-        }
-        
-        // Actualizar vista de lista
-        if (listDevice) listDevice.textContent = parsed.device;
-        if (listChannel) listChannel.textContent = `CH${parsed.channel}`;
-        if (listDate) listDate.textContent = convertirFecha(parsed.startDate);
-        if (listTime) listTime.textContent = formatTime(parsed.startTime);
-
+        if (parsedDateElement) parsedDateElement.textContent = formattedDate;
+        if (parsedTimeElement) parsedTimeElement.textContent = formattedTime;
+        if (listDate) listDate.textContent = formattedDate;
+        if (listTime) listTime.textContent = formattedTime;
     } else {
-        // Si el parseo falla, mostrar "N/A" o un mensaje de error
         if (tagsContainer) tagsContainer.innerHTML = '<span class="video-tag">Error</span>';
         if (parsedDateElement) parsedDateElement.textContent = 'N/A';
         if (parsedTimeElement) parsedTimeElement.textContent = 'N/A';
         if (parsedInfoElement) {
             parsedInfoElement.innerHTML = `
-                <div class="parsed-detail" style="color: var(--text-error);">
+                <div class="parsed-detail" style="color: var(--error-color);">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>Formato de nombre inválido</span>
+                    <span>Formato inválido</span>
                 </div>
             `;
         }
@@ -1177,7 +1730,30 @@ function updateVideoDisplay(gridElement, listElement, parsed, index) {
     }
 }
 
-// Función principal de filtrado mejorada
+// Poblar filtros
+function populateFilters() {
+    const deviceFilter = document.getElementById('deviceFilter');
+    const channelFilter = document.getElementById('channelFilter');
+    
+    deviceFilter.innerHTML = '<option value="">Todos</option>';
+    channelFilter.innerHTML = '<option value="">Todos</option>';
+    
+    Array.from(allDevices).sort().forEach(device => {
+        const option = document.createElement('option');
+        option.value = device;
+        option.textContent = device;
+        deviceFilter.appendChild(option);
+    });
+    
+    Array.from(allChannels).sort((a, b) => a - b).forEach(channel => {
+        const option = document.createElement('option');
+        option.value = channel;
+        option.textContent = `CH${channel}`;
+        channelFilter.appendChild(option);
+    });
+}
+
+// Filtrar videos
 function filterVideos() {
     const searchTerm = document.getElementById('videoSearch').value.toLowerCase().trim();
     const deviceFilter = document.getElementById('deviceFilter').value;
@@ -1186,87 +1762,58 @@ function filterVideos() {
     const hourFilter = document.getElementById('hourFilter').value;
     
     let visibleCount = 0;
-    
-    // Parsear comandos rápidos del texto de búsqueda
     const quickCommands = parseQuickCommands(searchTerm);
     
-    console.log('Filtering with:', { deviceFilter, channelFilter, dateFilter, hourFilter, quickCommands }); // Debug
-    
-    videoData.forEach((video, index) => {
+    videoData.forEach((video) => {
         let match = true;
         const { parsed, filename } = video;
         
-        // Debug para el primer video
-        if (index === 0) {
-            console.log('First video debug:', { filename, parsed, quickCommands });
-        }
-        
-        // Filtro por dispositivo (selector o comando rápido)
+        // Filtro por dispositivo
         const targetDevice = deviceFilter || quickCommands.device;
         if (targetDevice && (!parsed.isValid || parsed.device.toLowerCase() !== targetDevice.toLowerCase())) {
             match = false;
-            if (index === 0) console.log('Device filter failed:', { targetDevice, parsedDevice: parsed.device });
         }
         
-        // Filtro por canal (selector o comando rápido)
+        // Filtro por canal
         const targetChannel = channelFilter || quickCommands.channel;
         if (targetChannel && (!parsed.isValid || parsed.channel !== parseInt(targetChannel))) {
             match = false;
-            if (index === 0) console.log('Channel filter failed:', { targetChannel, parsedChannel: parsed.channel });
         }
         
-        // Filtro por fecha (selector o comando rápido) - MEJORADO
+        // Filtro por fecha
         const targetDate = dateFilter || quickCommands.date;
         if (targetDate) {
             if (!parsed.isValid) {
                 match = false;
-                if (index === 0) console.log('Date filter failed: invalid parsed data');
             } else {
                 let targetDateFormatted = targetDate;
-                
-                // Si viene del selector de fecha (formato YYYY-MM-DD), convertir a YYYYMMDD
                 if (targetDate.includes('-')) {
                     targetDateFormatted = targetDate.replace(/-/g, '');
                 }
-                
-                // Si viene de comando rápido, puede estar en varios formatos
-                if (targetDateFormatted.length === 8) {
-                    if (parsed.startDate !== targetDateFormatted) {
-                        match = false;
-                        if (index === 0) console.log('Date filter failed:', { 
-                            targetDateFormatted, 
-                            parsedStartDate: parsed.startDate,
-                            originalTarget: targetDate 
-                        });
-                    }
-                } else {
+                if (targetDateFormatted.length === 8 && parsed.startDate !== targetDateFormatted) {
                     match = false;
-                    if (index === 0) console.log('Date format invalid:', targetDateFormatted);
                 }
             }
         }
         
-        // Filtro por hora (selector o comando rápido)
+        // Filtro por hora
         const targetHour = hourFilter || quickCommands.hour;
         if (targetHour && (!parsed.isValid || parsed.hour !== parseInt(targetHour))) {
             match = false;
-            if (index === 0) console.log('Hour filter failed:', { targetHour, parsedHour: parsed.hour });
         }
         
-        // Búsqueda de texto libre (excluyendo comandos)
+        // Búsqueda de texto libre
         const freeText = quickCommands.freeText;
         if (freeText) {
             const searchableText = parsed.isValid ? 
                 `${parsed.device} ${filename}`.toLowerCase() : 
                 filename.toLowerCase();
-            
             if (!searchableText.includes(freeText)) {
                 match = false;
-                if (index === 0) console.log('Free text filter failed:', { freeText, searchableText });
             }
         }
         
-        // Mostrar/ocultar elemento - CORREGIDO para evitar duplicados
+        // Mostrar/ocultar elemento
         if (match) {
             if (currentView === 'grid') {
                 video.gridElement.style.display = 'block';
@@ -1282,16 +1829,13 @@ function filterVideos() {
         }
     });
     
-    console.log('Visible count:', visibleCount); // Debug
-    
-    // Actualizar contador de videos visibles
     const visibleVideosElement = document.getElementById('visibleVideos');
     if (visibleVideosElement) {
         visibleVideosElement.textContent = visibleCount;
     }
 }
 
-// Parsear comandos rápidos del texto de búsqueda - MEJORADO
+// Parsear comandos rápidos
 function parseQuickCommands(searchText) {
     const commands = {
         device: null,
@@ -1303,63 +1847,68 @@ function parseQuickCommands(searchText) {
     
     let remainingText = searchText;
     
-    // Extraer comando de canal: ch:2 o canal:2
+    // Canal
     const channelMatch = remainingText.match(/(?:ch|canal):(\d+)/i);
     if (channelMatch) {
         commands.channel = channelMatch[1];
         remainingText = remainingText.replace(channelMatch[0], '').trim();
     }
     
-    // Extraer comando de fecha: fecha:2025-01-14 o fecha:20250114
+    // Fecha
     const dateMatch = remainingText.match(/fecha:([\d-/]+)/i);
     if (dateMatch) {
         let dateValue = dateMatch[1];
-        
-        // Convertir diferentes formatos a YYYYMMDD
         if (dateValue.includes('-')) {
             const parts = dateValue.split('-');
             if (parts.length === 3) {
-                // Formato YYYY-MM-DD
                 if (parts[0].length === 4) {
                     dateValue = parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
-                }
-                // Formato DD-MM-YYYY
-                else if (parts[2].length === 4) {
+                } else if (parts[2].length === 4) {
                     dateValue = parts[2] + parts[1].padStart(2, '0') + parts[0].padStart(2, '0');
                 }
             }
         } else if (dateValue.includes('/')) {
             const parts = dateValue.split('/');
             if (parts.length === 3) {
-                // Formato DD/MM/YYYY
                 if (parts[2].length === 4) {
                     dateValue = parts[2] + parts[1].padStart(2, '0') + parts[0].padStart(2, '0');
-                }
-                // Formato YYYY/MM/DD
-                else if (parts[0].length === 4) {
+                } else if (parts[0].length === 4) {
                     dateValue = parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
                 }
             }
         }
-        
         commands.date = dateValue;
         remainingText = remainingText.replace(dateMatch[0], '').trim();
     }
     
-    // Extraer comando de hora: hora:22
+    // Hora
     const hourMatch = remainingText.match(/hora:(\d{1,2})/i);
     if (hourMatch) {
         commands.hour = hourMatch[1].padStart(2, '0');
         remainingText = remainingText.replace(hourMatch[0], '').trim();
     }
     
-    // El texto restante es búsqueda libre
     commands.freeText = remainingText;
-    
     return commands;
 }
 
-// Limpiar todos los filtros
+// Utilidades de formato
+function formatDate(dateStr) {
+    if (!dateStr || dateStr.length !== 8) return 'N/A';
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    return `${day}/${month}/${year}`;
+}
+
+function formatTime(timeStr) {
+    if (!timeStr || timeStr.length !== 6) return 'N/A';
+    const hour = timeStr.substring(0, 2);
+    const minute = timeStr.substring(2, 4);
+    return `${hour}:${minute}`;
+}
+
+// Limpiar filtros
 function clearFilters() {
     document.getElementById('videoSearch').value = '';
     document.getElementById('deviceFilter').value = '';
@@ -1389,87 +1938,60 @@ function setView(view) {
         listBtn.classList.add('active');
     }
     
-    // Reapply filter if there's a search term
     filterVideos();
 }
 
-// Mostrar/ocultar ayuda de búsqueda
+// Ayuda de búsqueda
 function toggleSearchHelp() {
     const tooltip = document.getElementById('searchHelpTooltip');
     tooltip.style.display = tooltip.style.display === 'block' ? 'none' : 'block';
 }
 
-// Cerrar ayuda al hacer clic fuera
-document.addEventListener('click', function(e) {
-    const helpButton = document.querySelector('.btn-help');
-    const tooltip = document.getElementById('searchHelpTooltip');
-    
-    if (!helpButton.contains(e.target) && !tooltip.contains(e.target)) {
-        tooltip.style.display = 'none';
-    }
-});
-
-function convertirFecha(fechaString) {
-    // Verificar que el string tenga exactamente 8 caracteres
-    if (fechaString.length !== 8) {
-        throw new Error('El formato debe ser YYYYMMDD (8 dígitos)');
-    }
-    
-    // Extraer año, mes y día
-    const año = fechaString.substring(0, 4);
-    const mes = fechaString.substring(4, 6);
-    const dia = fechaString.substring(6, 8);
-    
-    // Retornar en formato DD/MM/YYYY
-    return `${dia}/${mes}/${año}`;
-}
-
-// Mostrar información del video
+// Modal de información
 function showVideoInfo(name, size, date) {
     document.getElementById('modalVideoName').textContent = name;
     document.getElementById('modalVideoSize').textContent = size + ' MB';
     document.getElementById('modalVideoDate').textContent = date;
     
-    // Agregar información parseada al modal
     const parsed = parseVideoFilename(name);
     const modalParsedInfo = document.getElementById('modalParsedInfo');
     
     if (parsed.isValid) {
         modalParsedInfo.innerHTML = `
-            <div class="info-row">
-                <strong>Dispositivo:</strong>
-                <span>${parsed.device}</span>
-            </div>
-            <div class="info-row">
-                <strong>Canal:</strong>
-                <span>Canal ${parsed.channel}</span>
-            </div>
-            <div class="info-row">
-                <strong>Fecha de grabación:</strong>
-                <span>${convertirFecha(parsed.startDate)}</span>
-            </div>
-            <div class="info-row">
-                <strong>Hora de inicio:</strong>
-                <span>${formatTime(parsed.startTime)}</span>
-            </div>
-            <div class="info-row">
-                <strong>Hora de fin:</strong>
-                <span>${formatTime(parsed.endTime)}</span>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Dispositivo:</strong>
+                    <span>${parsed.device}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Canal:</strong>
+                    <span>Canal ${parsed.channel}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Fecha de grabación:</strong>
+                    <span>${formatDate(parsed.startDate)}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Hora de inicio:</strong>
+                    <span>${formatTime(parsed.startTime)}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Hora de fin:</strong>
+                    <span>${formatTime(parsed.endTime)}</span>
+                </div>
             </div>
         `;
     } else {
         modalParsedInfo.innerHTML = `
-            <div class="info-row">
-                <strong>Formato:</strong>
-                <span style="color: var(--text-error);">No se pudo parsear el nombre del archivo.</span>
-            </div>
-            <div class="info-row">
-                <strong>Error:</strong>
-                <span style="color: var(--text-error);">${parsed.error || 'Desconocido'}</span>
-            </div>
-            <div class="info-row">
-                <strong>Formato esperado:</strong>
-                <span><code>Dispositivo_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext</code></span>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Error:</strong>
+                    <span style="color: var(--error-color);">${parsed.error || 'Formato no reconocido'}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Formato esperado:</strong>
+                    <span><code>Dispositivo_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext</code></span>
+                </div>
             </div>
         `;
     }
@@ -1481,17 +2003,102 @@ function closeVideoInfo() {
     document.getElementById('videoInfoModal').style.display = 'none';
 }
 
-// Cerrar modal con Escape
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeVideoInfo();
-        document.getElementById('searchHelpTooltip').style.display = 'none';
+// Multi-canal
+function updateMultiChannelButton() {
+    const checkboxes = document.querySelectorAll('.video-checkbox:checked');
+    const button = document.getElementById('multiChannelBtn');
+    
+    if (checkboxes.length > 0) {
+        button.disabled = false;
+        button.innerHTML = `<i class="fas fa-th"></i> Multi-Canal (${checkboxes.length})`;
+    } else {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-th"></i> Multi-Canal';
     }
-});
+}
 
-// Inicializar cuando se carga la página
-document.addEventListener('DOMContentLoaded', function() {
-    initializeVideoData();
-});
+function openMultiChannelModal() {
+    const checkboxes = document.querySelectorAll('.video-checkbox:checked');
+    if (checkboxes.length === 0) return;
+    
+    const selectedList = document.getElementById('selectedVideosList');
+    selectedList.innerHTML = '';
+    
+    checkboxes.forEach((checkbox) => {
+        const videoPath = checkbox.value;
+        const videoName = videoPath.split('/').pop();
+        
+        const videoItem = document.createElement('div');
+        videoItem.className = 'selected-video-item';
+        videoItem.innerHTML = `
+            <i class="fas fa-video"></i>
+            <span class="video-name">${videoName}</span>
+            <button class="btn-remove" onclick="removeSelectedVideo('${videoPath}')">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        selectedList.appendChild(videoItem);
+    });
+    
+    document.getElementById('multiChannelModal').style.display = 'flex';
+}
+
+function closeMultiChannelModal() {
+    document.getElementById('multiChannelModal').style.display = 'none';
+}
+
+function selectLayout(layout) {
+    selectedLayout = layout;
+    document.querySelectorAll('.layout-option').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-layout="${layout}"]`).classList.add('active');
+}
+
+function removeSelectedVideo(videoPath) {
+    const checkbox = document.querySelector(`.video-checkbox[value="${videoPath}"]`);
+    if (checkbox) {
+        checkbox.checked = false;
+        updateMultiChannelButton();
+        openMultiChannelModal();
+    }
+}
+
+function startMultiChannelView() {
+    const checkboxes = document.querySelectorAll('.video-checkbox:checked');
+    const selectedVideos = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedVideos.length === 0) {
+        alert('No hay videos seleccionados');
+        return;
+    }
+    
+    const maxVideos = {
+        '2x2': 4,
+        '3x3': 9,
+        '4x4': 16
+    };
+    
+    if (selectedVideos.length > maxVideos[selectedLayout]) {
+        alert(`El layout ${selectedLayout} solo soporta ${maxVideos[selectedLayout]} videos máximo`);
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    selectedVideos.forEach(video => params.append('videos', video));
+    params.append('layout', selectedLayout);
+    params.append('folder', '{{ folder }}');
+    
+    if (document.getElementById('syncPlayback').checked) {
+        params.append('sync', 'true');
+    }
+    if (document.getElementById('autoConvert').checked) {
+        params.append('convert', 'true');
+    }
+    if (document.getElementById('adaptiveQuality').checked) {
+        params.append('adaptive', 'true');
+    }
+    
+    window.location.href = `/multi_channel_player?${params.toString()}`;
+}
 </script>
+
 {% endblock %}
