@@ -164,8 +164,7 @@ class LargeFilesDTPHandler(ThrottledDTPHandler):
     Los límites read_limit / write_limit se inyectan desde FTPServerConfig.
     """
     # Desactivar sendfile() de OS para mayor compatibilidad
-    def use_sendfile(self):
-        return False
+    use_sendfile = staticmethod(lambda: False)
 
 
 # ──────────────────────────────────────────────────────────────

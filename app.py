@@ -260,6 +260,18 @@ def _save_new_device(ip, alias="", location=""):
         config_instance.set("devices", devices)
         logger_instance.info("app",f"Nuevo dispositivo agregado: {ip} (alias: {alias}, location: {location})")
 
+def _is_ip_folder(name: str) -> bool:
+    parts = name.split(".")
+    if len(parts) != 4:
+        return False
+    for part in parts:
+        if not part.isdigit():
+            return False
+        value = int(part)
+        if value < 0 or value > 255:
+            return False
+    return True
+
 def _scan_devices() -> dict:
     """
     Escanea videos_dir buscando subcarpetas que representen dispositivos (IPs).
@@ -279,18 +291,20 @@ def _scan_devices() -> dict:
     if not base.exists():
         return result
 
-    for device_dir in sorted(base.iterdir()):
-        if not device_dir.is_dir():
-            continue
+    ip_dirs = [d for d in sorted(base.iterdir()) if d.is_dir() and _is_ip_folder(d.name)]
 
-        ip          = device_dir.name
-        
+    if ip_dirs:
+        scan_targets = [(d.name, d) for d in ip_dirs]
+    else:
+        scan_targets = [("local", base)]
+
+    for ip, device_dir in scan_targets:
         if ip not in devices:
             _save_new_device(ip)
-            devices = config_instance.get("devices", {})  # Recargar después de guardar
-        
+            devices = config_instance.get("devices", {})
+
         device_info = devices.get(ip, {})
-        files       = []
+        files = []
 
         for f in sorted(device_dir.rglob("*")):
             if not f.is_file() or f.suffix.lower() not in _ALLOWED:
@@ -666,34 +680,23 @@ def player():
     Los videos se obtienen recursivamente desde el directorio de videos.
     """
     videos = []
-    devices_cfg = config_instance.get("devices", {})
-    base_dir = Path(_VIDEOS_DIR)
-    if not base_dir.exists():
-        logger_instance.warning("app", f"Directorio de videos no existe: {base_dir}")
-        return render_template("player.html", videos=videos, video_count=0)
+    devices_data = _scan_devices()
 
-    try:
-        for item in base_dir.rglob("*"):
-            if item.is_file() and item.suffix.lower() in _ALLOWED:
-                rel_path = item.relative_to(base_dir).as_posix()
-                parts = rel_path.split("/")
-                device_id = parts[0] if parts and parts[0] in devices_cfg else "local"
-                device_alias = devices_cfg.get(device_id, {}).get("alias", device_id)
-
-                videos.append({
-                    "id":              len(videos),
-                    "filename":        item.name,
-                    "path":            rel_path,
-                    "device_id":       device_id,
-                    "device_alias":    device_alias,
-                    "channel_id":      "1",
-                    "recording_date":  item.stat().st_mtime,
-                    "resolution":      "1920x1080",
-                    "file_size":       item.stat().st_size,
-                    "conv_status":     "done",
-                })
-    except Exception as e:
-        logger_instance.error("app", f"Error escaneando {base_dir}: {e}")
+    for device in devices_data.values():
+        for f in device.get("files", []):
+            channel = f.get("channel") or f.get("channel_id") or "1"
+            videos.append({
+                "id":              len(videos),
+                "filename":        f.get("name"),
+                "path":            f.get("path"),
+                "device_id":       device.get("ip", "local"),
+                "device_alias":    device.get("alias", "local"),
+                "channel_id":      channel,
+                "recording_date":  f.get("modified"),
+                "resolution":      "1920x1080",
+                "file_size":       f.get("size"),
+                "conv_status":     "done",
+            })
     
     return render_template("player.html", 
                           videos=videos, 
