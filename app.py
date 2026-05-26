@@ -339,6 +339,68 @@ def _scan_devices() -> dict:
     return result
 
 
+def cleanup_old_videos(days: int = 7) -> dict:
+    """
+    Borra archivos en _VIDEOS_DIR con antiguedad mayor a X dias.
+    Retorna conteos de eliminados y errores.
+    """
+    cutoff = time.time() - (days * 86400)
+    deleted = 0
+    errors = 0
+
+    base = Path(_VIDEOS_DIR)
+    if not base.exists():
+        return {"deleted": 0, "errors": 0}
+
+    for f in base.rglob("*"):
+        if not f.is_file():
+            continue
+        if f.suffix.lower() not in _ALLOWED:
+            continue
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+                deleted += 1
+        except Exception as e:
+            errors += 1
+            logger_instance.error("app", f"No se pudo borrar {f}: {e}")
+
+    logger_instance.info("app", f"Limpieza videos >{days} dias: {deleted} borrados, {errors} errores")
+    return {"deleted": deleted, "errors": errors}
+
+
+_cleanup_stop_event = threading.Event()
+_cleanup_thread = None
+
+
+def start_cleanup_scheduler(interval_minutes: int = 60, days: int = 7) -> None:
+    """
+    Inicia un hilo en segundo plano que limpia videos cada cierto tiempo.
+    """
+    global _cleanup_thread
+
+    if interval_minutes <= 0:
+        logger_instance.info("app", "Limpieza programada deshabilitada (intervalo <= 0)")
+        return
+
+    if _cleanup_thread and _cleanup_thread.is_alive():
+        return
+
+    def _loop():
+        logger_instance.info(
+            "app",
+            f"Limpieza programada cada {interval_minutes} min (retencion {days} dias)",
+        )
+        while not _cleanup_stop_event.wait(interval_minutes * 60):
+            try:
+                cleanup_old_videos(days=days)
+            except Exception as e:
+                logger_instance.error("app", f"Error limpieza programada: {e}")
+
+    _cleanup_thread = threading.Thread(target=_loop, daemon=True)
+    _cleanup_thread.start()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # HTTP Range Request support
 # ─────────────────────────────────────────────────────────────────────────────
@@ -884,6 +946,14 @@ def settings_device_alias():
 
 if __name__ == "__main__":
     srv = config_instance.get("server", {})
+    maint_enabled = config_instance.get("maintenance.cleanup_enabled", True)
+    maint_days = int(config_instance.get("maintenance.cleanup_days", 7))
+    maint_interval = int(config_instance.get("maintenance.cleanup_interval_minutes", 60))
+
+    if maint_enabled:
+        if not srv.get("debug", True) or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+            start_cleanup_scheduler(interval_minutes=maint_interval, days=maint_days)
+
     logger_instance.info("app", "Iniciando servidor...")
     logger_instance.info("app", f"  http://{srv.get('host','0.0.0.0')}:{srv.get('port',5000)}")
     logger_instance.info("app", f"  Videos : {_VIDEOS_DIR}/")
