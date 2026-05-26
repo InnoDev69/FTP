@@ -667,33 +667,33 @@ def player():
     """
     videos = []
     devices_cfg = config_instance.get("devices", {})
-    
-    def scan_dir(directory, prefix=""):
-        """Escanea recursivamente buscando archivos de video."""
-        try:
-            for item in sorted(Path(directory).iterdir(), reverse=True):
-                if item.is_file() and item.suffix.lower() in _ALLOWED:
-                    rel_path = str(item.relative_to(_VIDEOS_DIR)) if prefix == "" else f"{prefix}/{item.name}"
-                    device_alias = "local" if not prefix else devices_cfg.get(prefix, {}).get("alias", prefix)
-                    
-                    videos.append({
-                        "id":              len(videos),
-                        "filename":        item.name,
-                        "path":            rel_path,
-                        "device_id":       prefix if prefix else "local",
-                        "device_alias":    device_alias,
-                        "channel_id":      "1",
-                        "recording_date":  item.stat().st_mtime,
-                        "resolution":      "1920x1080",
-                        "file_size":       item.stat().st_size,
-                        "conv_status":     "done",
-                    })
-                elif item.is_dir() and prefix == "":
-                    scan_dir(item, prefix=item.name)
-        except Exception as e:
-            logger_instance.error("app", f"Error escaneando {directory}: {e}")
+    base_dir = Path(_VIDEOS_DIR)
+    if not base_dir.exists():
+        logger_instance.warning("app", f"Directorio de videos no existe: {base_dir}")
+        return render_template("player.html", videos=videos, video_count=0)
 
-    scan_dir(_VIDEOS_DIR)
+    try:
+        for item in base_dir.rglob("*"):
+            if item.is_file() and item.suffix.lower() in _ALLOWED:
+                rel_path = item.relative_to(base_dir).as_posix()
+                parts = rel_path.split("/")
+                device_id = parts[0] if parts and parts[0] in devices_cfg else "local"
+                device_alias = devices_cfg.get(device_id, {}).get("alias", device_id)
+
+                videos.append({
+                    "id":              len(videos),
+                    "filename":        item.name,
+                    "path":            rel_path,
+                    "device_id":       device_id,
+                    "device_alias":    device_alias,
+                    "channel_id":      "1",
+                    "recording_date":  item.stat().st_mtime,
+                    "resolution":      "1920x1080",
+                    "file_size":       item.stat().st_size,
+                    "conv_status":     "done",
+                })
+    except Exception as e:
+        logger_instance.error("app", f"Error escaneando {base_dir}: {e}")
     
     return render_template("player.html", 
                           videos=videos, 

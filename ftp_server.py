@@ -163,9 +163,9 @@ class LargeFilesDTPHandler(ThrottledDTPHandler):
     Hereda throttling de ThrottledDTPHandler y expone buffer configurable.
     Los límites read_limit / write_limit se inyectan desde FTPServerConfig.
     """
-
     # Desactivar sendfile() de OS para mayor compatibilidad
-    use_sendfile = False
+    def use_sendfile(self):
+        return False
 
 
 # ──────────────────────────────────────────────────────────────
