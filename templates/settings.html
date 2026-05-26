@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Configuracion - Dahua FTP{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Configuracion</h2>
+      <span class="page-sub">Administra servidor, almacenamiento y dispositivos</span>
+    </div>
+    <div class="page-actions">
+      <button class="btn-secondary" onclick="location.href='/'">Volver</button>
+    </div>
+  </div>
+
+  <div class="settings-grid">
+    <!-- SERVER SETTINGS -->
+    <form class="setting-card" method="post" action="{{ url_for('settings_update', section='server') }}">
+      <h3>Servidor</h3>
+      <div class="setting-item">
+        <span class="setting-label">Host</span>
+        <div class="setting-value">
+          <input type="text" name="host" value="{{ server.host or '0.0.0.0' }}" placeholder="0.0.0.0">
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">Puerto</span>
+        <div class="setting-value">
+          <input type="number" name="port" value="{{ server.port or 5000 }}" placeholder="5000" min="1" max="65535">
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">Debug</span>
+        <div class="setting-value">
+          <input type="checkbox" name="debug" {% if server.debug %}checked{% endif %}>
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">Max Upload (GB)</span>
+        <div class="setting-value">
+          <input type="number" name="max_upload_gb" value="{{ server.max_upload_gb or 4 }}" placeholder="4" min="1">
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn-apply" type="submit">Guardar</button>
+      </div>
+    </form>
+
+    <!-- STORAGE SETTINGS -->
+    <form class="setting-card" method="post" action="{{ url_for('settings_update', section='storage') }}">
+      <h3>Almacenamiento</h3>
+      <div class="setting-item">
+        <span class="setting-label">Carpeta Videos</span>
+        <div class="setting-value">
+          <input type="text" name="videos_dir" value="{{ storage.videos_dir or 'dahua_videos' }}" placeholder="dahua_videos">
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">Carpeta Caché</span>
+        <div class="setting-value">
+          <input type="text" name="cache_dir" value="{{ storage.cache_dir or 'cache' }}" placeholder="cache">
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">Extensiones</span>
+        <div class="setting-value">
+          <input type="text" name="allowed_extensions" value="{{ storage.allowed_extensions | join(', ') if storage.allowed_extensions else '.dav, .mp4, .avi, .mkv' }}" placeholder=".dav, .mp4, .avi, .mkv">
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn-apply" type="submit">Guardar</button>
+      </div>
+    </form>
+
+    <!-- HLS SETTINGS -->
+    <form class="setting-card" method="post" action="{{ url_for('settings_update', section='hls') }}">
+      <h3>HLS / Streaming</h3>
+      <div class="setting-item">
+        <span class="setting-label">Duración Segmento (seg)</span>
+        <div class="setting-value">
+          <input type="number" name="segment_duration" value="{{ hls.segment_duration or 3600 }}" placeholder="3600" min="1">
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn-apply" type="submit">Guardar</button>
+      </div>
+    </form>
+
+    <!-- DEVICES SETTINGS -->
+    <div class="setting-card">
+      <h3>Dispositivos ({{ devices | length }})</h3>
+      <div class="device-list" id="devices-list">
+        {% if devices %}
+          {% for ip, info in devices.items() %}
+          <form class="device-item" method="post" action="{{ url_for('settings_device_alias') }}">
+            <div class="device-info">
+              <div class="device-ip">{{ ip }}</div>
+              <div class="device-alias">Alias</div>
+              <input class="device-input" type="text" name="alias" value="{{ info.alias or ip }}">
+              <input type="hidden" name="ip" value="{{ ip }}">
+              <div class="device-location">{{ info.location or '-' }}</div>
+            </div>
+            <div class="device-actions">
+              <button class="btn-apply device-save" type="submit">Guardar</button>
+            </div>
+          </form>
+          {% endfor %}
+        {% else %}
+          <div class="device-empty">Sin dispositivos registrados</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

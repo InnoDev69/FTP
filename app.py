@@ -1,1288 +1,882 @@
-#!/usr/bin/env python3
 """
-Cliente web para administrar el servidor FTP Dahua
-Aplicación Flask separada del servidor FTP
+DAV → MP4 Streaming Server
+===========================
+Estrategia: REMUX (sin recodificar) usando PyAV.
+- Copia streams de video/audio bit a bit al contenedor MP4.
+- No hay transcodificación: es ~100x más rápido que recodificar.
+- Soporta HTTP Range Requests para seeking en el navegador.
+- Soporta estructura de carpetas por dispositivo/IP (Dahua DVR).
 """
 
-
-import contextlib
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
-from flask import send_from_directory
-from pathlib import PurePosixPath
 import os
+import io
+import re
 import json
+import threading
+import tempfile
+import hashlib
 import time
 from datetime import datetime
 from pathlib import Path
-import psutil
-import ftplib
-from functools import wraps
-import subprocess
-import threading
-import signal
-import atexit
-from tempManager import TempFileManager
+from flask import (
+    Flask, render_template, request, Response,
+    jsonify, abort, redirect, url_for, flash
+)
+from src import logger_instance, config_instance
+from routes import all_blueprints
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFIGURACIÓN — cargada desde config.json
+# ─────────────────────────────────────────────────────────────────────────────
+
+config_instance.load_config()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'  # Cambiar en producción
+app.secret_key = (
+    os.environ.get("SECRET_KEY")
+    or config_instance.get("server.secret_key")
+    or "dev-secret"
+)
+app.config["MAX_CONTENT_LENGTH"] = config_instance.get("server.max_upload_gb", 4) * 1024 ** 3
 
-# Configuración por defecto
-DEFAULT_CONFIG = {
-    "FTP_HOST": "localhost",
-    "FTP_PORT": 60000,
-    "VIDEO_DIR": "dahua_videos",
-    "LOG_DIR": "logs",
-    "ALIAS_FILE": "dahua_videos/folder_aliases.json",
-    "ATTEMPS_LOGGING": 0,
-    "ATTEMPS_MAX": 5,
-    "CHANGELOG_FILE": "changelog.json",
-    "LAST_COMMIT_FILE": "last_commit.txt",
+for bp in all_blueprints:
+    app.register_blueprint(bp)
 
-    # Configuración de conversión DAV a MP4
-    "CONVERSION_ENABLED": True,
-    "CONVERSION_METHOD": "software",  # software, nvidia, amd, intel, auto
-    "CONVERSION_PRESET": "fast",      # ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
-    "CONVERSION_CRF": 23,             # 18-28, menor = mejor calidad
-    "CONVERSION_RESOLUTION": "original",  # original, 1080p, 720p, 480p
-    "CONVERSION_THREADS": 0,          # 0 = auto, o número específico
-    "CONVERSION_AUDIO_CODEC": "aac",  # aac, mp3, copy
-    "CONVERSION_AUDIO_BITRATE": "128k",
-    "CONVERSION_CLEANUP_TEMP": True,  # Limpiar archivos temporales
-    "CONVERSION_TIMEOUT": 300,        # Timeout en segundos (5 minutos)
-    "CONVERSION_CUSTOM_ARGS": "",     # Argumentos adicionales de FFmpeg
-    
-    "TEMP_DIR": "temp",               # Directorio temporal para archivos intermedios
-    "TEMP_FILE_MAX_AGE": 30,      # Tiempo máximo de vida de archivos temporales (1 hora)
-    "TEMP_CLEANUP_INTERVAL": 30,   # Intervalo de limpieza (30 minutos)
-}
+_VIDEOS_DIR = config_instance.get("storage.videos_dir", "dahua_videos")
+_CACHE_DIR  = config_instance.get("storage.cache_dir", "cache")
+_ALLOWED    = set(config_instance.get("storage.allowed_extensions", [".dav", ".mp4", ".avi", ".mkv"]))
 
-CONFIG_FILE = Path("config.json")
+os.makedirs(_VIDEOS_DIR, exist_ok=True)
+os.makedirs(_CACHE_DIR,  exist_ok=True)
 
-def load_config():
-    if not CONFIG_FILE.exists():
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(DEFAULT_CONFIG, f, indent=2)
-        config = DEFAULT_CONFIG.copy()
-    else:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            config = json.load(f)
-    return config
 
-temp_manager = TempFileManager(config_loader=load_config)
-config = load_config()
+# ─────────────────────────────────────────────────────────────────────────────
+# CORE: Remux DAV → MP4 usando PyAV (sin recodificación)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Usar la configuración cargada
-FTP_HOST = config["FTP_HOST"]
-FTP_PORT = config["FTP_PORT"]
-VIDEO_DIR = Path(config["VIDEO_DIR"])
-LOG_DIR = Path(config["LOG_DIR"])
-ALIAS_FILE = Path(config["ALIAS_FILE"])
-ATTEMPS_LOGGING = config["ATTEMPS_LOGGING"]
-ATTEMPS_MAX = config["ATTEMPS_MAX"]
-CHANGELOG_FILE = Path(config["CHANGELOG_FILE"])
-LAST_COMMIT_FILE = Path(config["LAST_COMMIT_FILE"])
+def _add_output_stream(output_container, input_stream):
+    """
+    Copia parámetros del input al output.
+    Ignora audio incompatible (pcm_alaw causa Error 22 en MP4).
+    """
+    s   = input_stream
+    ctx = s.codec_context
 
-SERVER_START_TIME = time.time()
+    if s.type != "video":
+        return None
 
-def format_uptime(seconds):
-    seconds = int(seconds)
-    days, seconds = divmod(seconds, 86400)
-    hours, seconds = divmod(seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
-    if days > 0:
-        return f"{days}d {hours}h {minutes}m"
-    elif hours > 0:
-        return f"{hours}h {minutes}m"
-    elif minutes > 0:
-        return f"{minutes}m {seconds}s"
-    else:
-        return f"{seconds}s"
+    out_s        = output_container.add_stream(ctx.name)
+    out_s.width  = s.width
+    out_s.height = s.height
 
-def get_temp_dir():
-    """Obtiene el directorio temporal configurado"""
-    config = load_config()
-    temp_dir = config.get("TEMP_DIR", "temp")
-    
-    # Si es una ruta relativa, hacerla absoluta desde el directorio del proyecto
-    if not os.path.isabs(temp_dir):
-        temp_dir = os.path.join(os.path.dirname(__file__), temp_dir)
-    
-    # Crear el directorio si no existe
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    return temp_dir
+    if s.pix_fmt:        out_s.pix_fmt   = s.pix_fmt
+    if s.time_base:      out_s.time_base = s.time_base
+    if s.average_rate:   out_s.rate      = s.average_rate
 
-def login_required(f):
-    """Decorador para requerir login"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'logged_in' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+    if ctx.extradata:
+        out_s.codec_context.extradata = ctx.extradata
 
-def get_project_stats():
-    """Estadísticas solo del proceso Flask y sus hijos"""
-    try:
-        proc = psutil.Process(os.getpid())
-        # Incluye hijos (por ejemplo, ffmpeg)
-        children = proc.children(recursive=True)
-        procs = [proc] + children
+    return out_s
 
-        # CPU y memoria
-        cpu = sum(p.cpu_percent(interval=0.1) for p in procs)
-        mem = sum(p.memory_info().rss for p in procs) / (1024 * 1024)  # MB
 
-        # Disco (bytes leídos/escritos)
-        disk_read = sum(getattr(p.io_counters(), 'read_bytes', 0) for p in procs)
-        disk_write = sum(getattr(p.io_counters(), 'write_bytes', 0) for p in procs)
+def _remux(input_path: str, output_path: str) -> None:
+    """
+    Remuxea input → output MP4.
+    Maneja timestamps rotos (dts/pts) nativos de los DVRs Dahua.
+    """
+    import av
+    with av.open(input_path) as inp:
+        with av.open(output_path, "w", format="mp4",
+                     options={"movflags": "faststart"}) as out:
 
-        # Red (bytes enviados/recibidos)
-        net_sent = sum(getattr(p, 'net_io_counters', lambda: None)() and getattr(p.net_io_counters(), 'bytes_sent', 0) or 0 for p in procs)
-        net_recv = sum(getattr(p, 'net_io_counters', lambda: None)() and getattr(p.net_io_counters(), 'bytes_recv', 0) or 0 for p in procs)
+            stream_map: dict[int, object] = {}
+            for s in inp.streams:
+                out_s = _add_output_stream(out, s)
+                if out_s:
+                    stream_map[s.index] = out_s
 
-        return {
-            'cpu_usage': round(cpu, 2),  # %
-            'mem_usage': round(mem, 2),  # MB
-            'disk_read_mb': round(disk_read / (1024 * 1024), 2),
-            'disk_write_mb': round(disk_write / (1024 * 1024), 2),
-            'net_sent_mb': round(net_sent / (1024 * 1024), 2),
-            'net_recv_mb': round(net_recv / (1024 * 1024), 2),
-        }
-    except Exception as e:
-        print(f"Error obteniendo estadísticas del proyecto: {e}")
-        return {
-            'cpu_usage': 0,
-            'mem_usage': 0,
-            'disk_read_mb': 0,
-            'disk_write_mb': 0,
-            'net_sent_mb': 0,
-            'net_recv_mb': 0,
-        }
+            if not stream_map:
+                raise ValueError(
+                    "No se encontraron streams de video compatibles en el archivo"
+                )
 
-def get_server_stats():
-    """Obtiene estadísticas del servidor"""
-    try:
-        stats = {
-            'status': 'offline',
-            'video_count': 0,
-            'total_size_gb': 0,
-            'disk_usage': 0,
-            'uptime': format_uptime(time.time() - SERVER_START_TIME),
-            'connections': 0,
-            'last_upload': 'N/A',
-            'cpu_usage': psutil.cpu_percent(interval=0.2),
-            'mem_usage': psutil.virtual_memory().percent,
-            'disk_usage_sys': psutil.disk_usage('/').percent,
-            'net_usage': 0  # Se calcula abajo
-        }
+            streams_to_demux = [s for s in inp.streams if s.index in stream_map]
+            last_dts = -1
 
-        # Verificar si el directorio de videos existe
-        if VIDEO_DIR.exists():
-            # Contar archivos de video
-            video_files = list(VIDEO_DIR.rglob("*.avi")) + list(VIDEO_DIR.rglob("*.mp4")) + list(VIDEO_DIR.rglob("*.dav"))
-            stats['video_count'] = len(video_files)
+            for packet in inp.demux(*streams_to_demux):
+                if packet.dts is None:
+                    continue
 
-            # Calcular tamaño total
-            total_size = sum(f.stat().st_size for f in video_files if f.exists())
-            stats['total_size_gb'] = round(total_size / (1024**3), 2)
+                if packet.dts < 0:
+                    packet.dts = 0
+                if packet.dts <= last_dts:
+                    packet.dts = last_dts + 1
+                if packet.pts is None or packet.pts < packet.dts:
+                    packet.pts = packet.dts
 
-            # Último archivo subido
-            if video_files:
-                latest_file = max(video_files, key=lambda f: f.stat().st_mtime)
-                stats['last_upload'] = datetime.fromtimestamp(latest_file.stat().st_mtime).strftime('%Y/%m/%d %H:%M:%S')
+                last_dts = packet.dts
 
-        # Verificar estado del servidor FTP
+                out_s = stream_map.get(packet.stream_index)
+                if out_s is None:
+                    continue
+                packet.stream = out_s
+                try:
+                    out.mux(packet)
+                except Exception:
+                    pass
+
+def _remux_streaming(input_path: str):
+    """
+    Generador que remuxea mientras envía chunks al cliente.
+    Escribe a un archivo temporal y lee en paralelo.
+    """
+    tmp      = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    tmp_path = tmp.name
+    tmp.close()
+
+    done_event   = threading.Event()
+    error_holder: list = []
+
+    def _worker():
         try:
-            ftp = ftplib.FTP()
-            ftp.connect(FTP_HOST, FTP_PORT, timeout=5)
-            ftp.login(session['ftp_user'], session['ftp_pass'])
-            stats['status'] = 'online'
-            ftp.quit()
-        except Exception:
-            stats['status'] = 'offline'
-
-        # Uso del disco
-        if VIDEO_DIR.exists():
-            disk_usage = psutil.disk_usage(str(VIDEO_DIR))
-            stats['disk_usage'] = round((disk_usage.used / disk_usage.total) * 100, 1)
-
-        # Uso de red (bytes enviados+recibidos desde arranque)
-        net = psutil.net_io_counters()
-        stats['net_usage'] = round((net.bytes_sent + net.bytes_recv) / (1024*1024), 2)  # MB
-
-        return stats
-    except Exception as e:
-        print(f"Error obteniendo estadísticas: {e}")
-        return stats
-
-def get_recent_logs(lines=100):
-    """Obtiene los logs recientes del servidor"""
-    try:
-        log_file = LOG_DIR / 'ftp_server.log'
-        if log_file.exists():
-            try:
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    all_lines = f.readlines()
-            except UnicodeDecodeError:
-                with open(log_file, 'r', encoding='latin1') as f:
-                    all_lines = f.readlines()
-            return all_lines[-lines:] if len(all_lines) > lines else all_lines
-        return []
-    except Exception as e:
-        print(f"Error leyendo logs: {e}")
-        return []
-
-def get_video_database():
-    """Lee la base de datos de videos o lista los archivos si no hay base"""
-    try:
-        db_file = VIDEO_DIR / 'video_database.txt'
-        videos = []
-        if db_file.exists() and db_file.stat().st_size > 0:
-            with open(db_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    parts = line.strip().split(',')
-                    if len(parts) >= 3:
-                        # Convertir a ruta relativa si es absoluta
-                        rel_path = PurePosixPath(f.relative_to(VIDEO_DIR))
-                        videos.append({
-                            'datetime': parts[0],
-                            'path': rel_path,
-                            'size': int(parts[2]) if parts[2].isdigit() else 0
-                        })
-        else:
-            for ext in ('*.avi', '*.mp4', '*.dav'):
-                for f in VIDEO_DIR.rglob(ext):
-                    rel_path = f.relative_to(VIDEO_DIR)
-                    videos.append({
-                        'datetime': datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
-                        'path': str(rel_path),
-                        'size': f.stat().st_size
-                    })
-        return sorted(videos, key=lambda x: x['datetime'], reverse=True)
-    except Exception as e:
-        print(f"Error leyendo base de datos: {e}")
-        return []
-    
-@app.route('/videos/<folder>')
-@login_required
-def videos_in_folder(folder):
-    aliases = load_folder_aliases()
-    folder_path = VIDEO_DIR / folder
-    if not folder_path.exists() or not folder_path.is_dir():
-        flash("Carpeta no encontrada", "error")
-        return redirect(url_for('videos'))
-    # Buscar archivos de video en la carpeta y subcarpetas (recursivo, case-insensitive)
-    videos = []
-    videos.extend(
-        f
-        for f in folder_path.rglob('*')
-        if f.is_file() and f.suffix.lower() in ('.mp4', '.avi', '.dav')
-    )
-    videos_info = [{
-        "name": v.name,
-        "size": v.stat().st_size,
-        "mtime": datetime.fromtimestamp(v.stat().st_mtime),
-        "path": str(v.relative_to(VIDEO_DIR))
-    } for v in videos]
-    # Ordenar por fecha descendente
-    videos_info.sort(key=lambda x: x["mtime"], reverse=True)
-    return render_template('videos_in_folder.html',
-                           folder=folder,
-                           alias=aliases.get(folder, ""),
-                           videos=videos_info)  
-
-@app.route('/download/<path:filename>')
-@login_required
-def download_video(filename):
-    """Descargar un archivo de video"""
-    # Asegura que la ruta sea relativa al directorio de videos
-    return send_from_directory(VIDEO_DIR, filename, as_attachment=True)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Página de login"""
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-
-        # Intentar login FTP con las credenciales ingresadas
-        try:
-            ftp = ftplib.FTP()
-            ftp.connect(FTP_HOST, FTP_PORT, timeout=5)
-            ftp.login(username, password)
-            ftp.quit()
-            # Si el login es exitoso, guardar en sesión
-            session['logged_in'] = True
-            session['username'] = username
-            session['ftp_user'] = username
-            session['ftp_pass'] = password
-            flash('Login exitoso', 'success')
-            return redirect(url_for('dashboard'))
+            _remux(input_path, tmp_path)
         except Exception as e:
-            print(e)
-            if "503" in str(e):
-                flash("Maximo de intentos alcanzado. Intenta más tarde.", "error")
-            if "530" in str(e):
-                flash('Credenciales incorrectas', 'error')
-    
-    return render_template('login.html')
+            error_holder.append(e)
+        finally:
+            done_event.set()
 
-@app.route('/logout')
-def logout():
-    """Cerrar sesión"""
-    session.clear()
-    flash('Sesión cerrada', 'info')
-    return redirect(url_for('login'))
+    threading.Thread(target=_worker, daemon=True).start()
 
-@app.route('/')
-@login_required
-def dashboard():
-    """Dashboard principal"""
-    stats = get_server_stats()
-    recent_videos = get_video_database()[:10]  # Últimos 10 videos
-    return render_template('dashboard.html', stats=stats, recent_videos=recent_videos)
+    CHUNK = 65536
+    with open(tmp_path, "rb") as f:
+        while not done_event.is_set():
+            chunk = f.read(CHUNK)
+            if chunk:
+                yield chunk
+            else:
+                time.sleep(0.01)
+        while True:
+            chunk = f.read(CHUNK)
+            if not chunk:
+                break
+            yield chunk
 
-@app.route('/logs')
-@login_required
-def logs():
-    """Página de logs"""
-    log_lines = get_recent_logs(200)
-    return render_template('logs.html', logs=log_lines)
-
-@app.route('/videos')
-@login_required
-def videos():
-    aliases = load_folder_aliases()
-    # Listar carpetas de primer nivel en VIDEO_DIR
-    folders = [f for f in VIDEO_DIR.iterdir() if f.is_dir()]
-    folders_info = []
-    folders_info.extend(
-        {
-            "real_name": folder.name,
-            "alias": aliases.get(folder.name, ""),
-            "video_count": len(list(folder.rglob("*.mp4")))
-            + len(list(folder.rglob("*.avi")))
-            + len(list(folder.rglob("*.dav"))),
-        }
-        for folder in folders
-    )
-    return render_template('videos.html', folders=folders_info)
-
-@app.route('/api/cpu_usage')
-def api_cpu_usage():
-    """API para obtener uso de CPU"""
     try:
-        cpu_usage = psutil.cpu_percent(interval=0.2)
-        return jsonify({'cpu_usage': cpu_usage})
-    except Exception as e:
-        print(f"Error obteniendo uso de CPU: {e}")
-        return jsonify({'cpu_usage': 0})
-    
-@app.route('/api/time')
-def api_time():
-    """API para obtener el tiempo de uso del servidor"""
-    return jsonify({'uptime': format_uptime(time.time() - SERVER_START_TIME)})
-
-@app.route('/api/stats')
-@login_required
-def api_stats():
-    """API para obtener estadísticas en tiempo real"""
-    stats = get_server_stats()
-    project_stats = get_project_stats()
-    stats.update(project_stats)
-    return jsonify(stats)
-
-@app.route('/api/logs')
-@login_required
-def api_logs():
-    """API para obtener logs recientes"""
-    lines = request.args.get('lines', 50, type=int)
-    return jsonify({'logs': get_recent_logs(lines)})
-
-def check_git_update():
-    """Verifica si hay actualizaciones en el repositorio git"""
-    try:
-        # Buscar cambios remotos
-        subprocess.run(['git', 'fetch'], check=True, capture_output=True)
-        local = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
-        remote = subprocess.check_output(['git', 'rev-parse', '@{u}']).decode().strip()
-        
-        if local != remote:
-            # Obtener información del commit remoto
-            commit_info = get_remote_commit_info()
-            return True, commit_info
-        return False, None
-    except Exception as e:
-        print(f"Error comprobando actualizaciones git: {e}")
-        return False, None
-
-def get_remote_commit_info():
-    """Obtiene información del commit remoto más reciente"""
-    try:
-        # Obtener hash del commit remoto
-        remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}']).decode().strip()
-        
-        # Obtener información del commit
-        commit_message = subprocess.check_output([
-            'git', 'log', '-1', '--pretty=format:%s', remote_hash
-        ]).decode().strip()
-        
-        commit_author = subprocess.check_output([
-            'git', 'log', '-1', '--pretty=format:%an', remote_hash
-        ]).decode().strip()
-        
-        commit_date = subprocess.check_output([
-            'git', 'log', '-1', '--pretty=format:%ci', remote_hash
-        ]).decode().strip()
-        
-        return {
-            'hash': remote_hash[:8],  # Solo los primeros 8 caracteres
-            'message': commit_message,
-            'author': commit_author,
-            'date': commit_date
-        }
-    except Exception as e:
-        print(f"Error obteniendo información del commit: {e}")
-        return {
-            'hash': 'unknown',
-            'message': 'Actualización disponible',
-            'author': 'unknown',
-            'date': datetime.now().isoformat()
-        }
-        
-def save_changelog_entry(commit_info):
-    """Guarda una entrada del changelog"""
-    try:
-        changelog = []
-        if CHANGELOG_FILE.exists():
-            with open(CHANGELOG_FILE, 'r', encoding='utf-8') as f:
-                changelog = json.load(f)
-        
-        # Agregar nueva entrada al inicio
-        new_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'commit_hash': commit_info['hash'],
-            'commit_message': commit_info['message'],
-            'commit_author': commit_info['author'],
-            'commit_date': commit_info['date'],
-            'applied': True
-        }
-        
-        changelog.insert(0, new_entry)
-        
-        # Mantener solo las últimas 20 entradas
-        changelog = changelog[:20]
-        
-        with open(CHANGELOG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(changelog, f, indent=2, ensure_ascii=False)
-            
-        return True
-    except Exception as e:
-        print(f"Error guardando changelog: {e}")
-        return False        
-
-def do_git_pull_and_restart():
-    """Ejecuta git pull y reinicia el servidor Flask"""
-    try:
-        # Obtener información del commit antes del pull
-        commit_info = get_remote_commit_info()
-        
-        # Ejecutar git pull
-        result = subprocess.run(['git', 'pull', '--no-rebase'], 
-                              check=True, capture_output=True, text=True)
-        
-        # Guardar entrada del changelog
-        save_changelog_entry(commit_info)
-        
-        print(f"Actualización exitosa: {commit_info['message']}")
-        
-        # Reiniciar el servidor Flask
-        os._exit(3)  # Código especial para reinicio supervisado
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error en git pull: {e}")
-        flash('Error al actualizar el proyecto', 'error')
-    except Exception as e:
-        print(f"Error actualizando el proyecto: {e}")
-        flash('Error inesperado al actualizar', 'error')
-
-def get_changelog():
-    """Obtiene el changelog completo"""
-    try:
-        if CHANGELOG_FILE.exists():
-            with open(CHANGELOG_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return []
-    except Exception as e:
-        print(f"Error leyendo changelog: {e}")
-        return []
-
-@app.context_processor
-def inject_update_flag():
-    """Inyecta variables globales en todas las plantillas"""
-    has_update, commit_info = check_git_update()
-    changelog = get_changelog()
-    
-    return dict(
-        update_available=has_update,
-        pending_commit=commit_info,
-        changelog=changelog
-    )
-    
-@app.route('/changelog')
-@login_required
-def changelog():
-    """Página del changelog"""
-    changelog_entries = get_changelog()
-    return render_template('changelog.html', changelog=changelog_entries)
-
-@app.route('/api/changelog')
-@login_required
-def api_changelog():
-    """API para obtener changelog"""
-    return jsonify({'changelog': get_changelog()})
-
-@app.route('/update', methods=['POST'])
-@login_required
-def update():
-    """Endpoint para actualizar el proyecto"""
-    has_update, commit_info = check_git_update()
-    
-    if not has_update:
-        flash('No hay actualizaciones disponibles', 'info')
-        return redirect(url_for('dashboard'))
-    
-    # Mostrar información del commit que se va a aplicar
-    if commit_info:
-        flash(f'Aplicando actualización: {commit_info["message"]} por {commit_info["author"]}', 'info')
-    
-    threading.Thread(target=do_git_pull_and_restart).start()
-    flash('Actualizando proyecto... El servidor se reiniciará.', 'info')
-    return redirect(url_for('dashboard'))
-
-def get_conversion_command(dav_path, mp4_path, config):
-    """
-    Genera el comando FFmpeg basado en la configuración
-    """
-    cmd = ["ffmpeg", "-y"]
-
-    # Configurar método de conversión (aceleración por hardware)
-    method = config.get("CONVERSION_METHOD", "software")
-
-    # Opciones de hwaccel SOLO para la entrada
-    hwaccel_args = []
-    if method == "nvidia":
-        hwaccel_args = [
-            "-hwaccel", "cuda",
-            "-hwaccel_output_format", "cuda"
-        ]
-    elif method == "amd":
-        hwaccel_args = [
-            "-hwaccel", "d3d11va"
-        ]
-    elif method == "intel":
-        hwaccel_args = [
-            "-hwaccel", "qsv"
-        ]
-    elif method == "auto":
-        hwaccel_args = get_auto_acceleration_args(config)[:4]  # Solo hwaccel args
-
-    # Agrega las opciones de hwaccel ANTES del input
-    cmd.extend(hwaccel_args)
-    cmd.extend(["-i", str(dav_path)])
-
-    # Opciones de codificación de video
-    if method == "nvidia":
-        # Mapear presets a los válidos de h264_nvenc
-        user_preset = config.get("CONVERSION_PRESET", "fast")
-        nvenc_preset_map = {
-            "ultrafast": "fast",
-            "superfast": "fast",
-            "veryfast": "fast",
-            "faster": "fast",
-            "fast": "medium",
-            "medium": "medium",
-            "slow": "slow",
-            "slower": "slow",
-            "veryslow": "slow"
-        }
-        nvenc_preset = nvenc_preset_map.get(user_preset, "medium")
-        cmd.extend([
-            "-c:v", "h264_nvenc",
-            "-preset", nvenc_preset,
-            "-cq", str(config.get("CONVERSION_CRF", 23))
-        ])
-    elif method == "amd":
-        cmd.extend([
-            "-c:v", "h264_amf",
-            "-quality", "speed" if config.get("CONVERSION_PRESET", "fast") in ["ultrafast", "superfast", "veryfast", "faster", "fast"] else "quality",
-            "-crf", str(config.get("CONVERSION_CRF", 23))
-        ])
-    elif method == "intel":
-        cmd.extend([
-            "-c:v", "h264_qsv",
-            "-preset", config.get("CONVERSION_PRESET", "fast"),
-            "-crf", str(config.get("CONVERSION_CRF", 23))
-        ])
-    elif method == "auto":
-        # El resto de args de auto
-        cmd.extend(get_auto_acceleration_args(config)[4:])
-    else:
-        cmd.extend([
-            "-c:v", "libx264",
-            "-preset", config.get("CONVERSION_PRESET", "fast"),
-            "-crf", str(config.get("CONVERSION_CRF", 23))
-        ])
-
-    # Configurar resolución
-    resolution = config.get("CONVERSION_RESOLUTION", "original")
-    if resolution == "1080p":
-        cmd.extend(["-vf", "scale=1920:1080"])
-    elif resolution == "480p":
-        cmd.extend(["-vf", "scale=854:480"])
-
-    elif resolution == "720p":
-        cmd.extend(["-vf", "scale=1280:720"])
-    # Configurar audio
-    audio_codec = config.get("CONVERSION_AUDIO_CODEC", "aac")
-    audio_bitrate = config.get("CONVERSION_AUDIO_BITRATE", "128k") or "128k"
-    if audio_codec == "copy":
-        cmd.extend(["-c:a", "copy"])
-    elif audio_codec == "mp3":
-        cmd.extend(["-c:a", "libmp3lame", "-b:a", audio_bitrate])
-    else:  # aac
-        cmd.extend(["-c:a", "aac", "-b:a", audio_bitrate])
-
-    # Configurar threads
-    threads = config.get("CONVERSION_THREADS", 0)
-    if threads > 0:
-        cmd.extend(["-threads", str(threads)])
-
-    # Optimizaciones adicionales
-    cmd.extend([
-        "-movflags", "+faststart",  # Optimización para streaming
-        "-avoid_negative_ts", "make_zero"  # Evitar timestamps negativos
-    ])
-
-    if custom_args := config.get("CONVERSION_CUSTOM_ARGS", ""):
-        cmd.extend(custom_args.split())
-
-    # Archivo de salida
-    cmd.append(str(mp4_path))
-
-    return cmd
-
-def get_auto_acceleration_args(config):
-    """
-    Detecta automáticamente la mejor aceleración disponible
-    """
-    import subprocess
-    
-    # Probar NVIDIA
-    try:
-        result = subprocess.run(["nvidia-smi"], capture_output=True, text=True)
-        if result.returncode == 0:
-            return [
-                "-hwaccel", "cuda",
-                "-hwaccel_output_format", "cuda",
-                "-c:v", "h264_nvenc",
-                "-preset", config.get("CONVERSION_PRESET", "fast"),
-                "-cq", str(config.get("CONVERSION_CRF", 23))
-            ]
-    except:
+        os.unlink(tmp_path)
+    except Exception:
         pass
-    
-    # Probar Intel QSV
-    try:
-        result = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True)
-        if "h264_qsv" in result.stdout:
-            return [
-                "-hwaccel", "qsv",
-                "-c:v", "h264_qsv",
-                "-preset", config.get("CONVERSION_PRESET", "fast"),
-                "-crf", str(config.get("CONVERSION_CRF", 23))
-            ]
-    except:
-        pass
-    
-    # Fallback a software
-    return [
-        "-c:v", "libx264",
-        "-preset", config.get("CONVERSION_PRESET", "fast"),
-        "-crf", str(config.get("CONVERSION_CRF", 23))
-    ]
 
-def convert_dav_to_mp4_advanced(dav_path, mp4_path, config):
+    if error_holder:
+        raise error_holder[0]
+
+def get_or_create_mp4(dav_path: str) -> str:
     """
-    Versión mejorada de conversión con configuración avanzada
+    Retorna la ruta a un MP4 cacheado. Si no existe, lo crea.
+    La clave de caché incluye path + mtime + size.
     """
-    import subprocess
-    import os
-    import time
+    stat = os.stat(dav_path)
+    key  = hashlib.md5(
+        f"{dav_path}:{stat.st_mtime}:{stat.st_size}".encode()
+    ).hexdigest()
+    mp4_path = os.path.join(_CACHE_DIR, f"{key}.mp4")
 
-    if not config.get("CONVERSION_ENABLED", True):
-        print("Conversión deshabilitada en la configuración")
-        return False
+    if not os.path.exists(mp4_path):
+        tmp_path = mp4_path + ".tmp"
+        try:
+            _remux(dav_path, tmp_path)
+            os.rename(tmp_path, mp4_path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+            raise
 
-    tmp_path = str(mp4_path).replace('.mp4', '.tmp.mp4')
-    lock_path = f'{str(mp4_path)}.lock'
+    return mp4_path
 
-    # Crear archivo lock
-    with open(lock_path, 'w') as lock:
-        lock.write(str(os.getpid()))
+# ─────────────────────────────────────────────────────────────────────────────
+# ESCANEO DE DISPOSITIVOS Y PARSEO DE NOMBRES DE ARCHIVO
+# ─────────────────────────────────────────────────────────────────────────────
 
-    try:
-        # Generar comando de conversión
-        cmd = get_conversion_command(dav_path, tmp_path, config)
+def _parse_filename_datetime(filename: str) -> dict | None:
+    """
+    Extrae fecha, hora y metadatos del nombre del archivo .dav.
 
-        print(f"Iniciando conversión: {' '.join(cmd)}")
+    Formato real Dahua:
+        COLONIAL_ch1_main_20260507_000000_20260507_010000
+        → site=COLONIAL, channel=ch1, stream=main
+        → start=2026-05-07 00:00  end=2026-05-07 01:00
 
-        # Ejecutar conversión con timeout
-        timeout = config.get("CONVERSION_TIMEOUT", 300)
-        start_time = time.time()
+    Retorna dict con claves datetime/date/hour/hour_label y opcionales
+    site/channel/stream/end_label, o None si no matchea ningún patrón.
+    """
+    patterns = config_instance.get("filename_patterns", {})
+    for pattern_name, pattern in patterns.items():
+        m = re.search(pattern, filename)
+        if m:
+            g = m.groupdict()
+            try:
+                dt = datetime(
+                    int(g["year"]), int(g["month"]), int(g["day"]),
+                    int(g["hour"]),
+                    int(g.get("minute", 0)),
+                    int(g.get("second", 0)),
+                )
+                result = {
+                    "datetime":     dt.isoformat(),
+                    "date":         dt.strftime("%Y-%m-%d"),
+                    "hour":         dt.hour,
+                    "hour_label":   dt.strftime("%H:%M"),
+                    "pattern_used": pattern_name,
+                }
+                # Campos opcionales presentes en dahua_site_channel
+                if g.get("site"):
+                    result["site"] = g["site"]
+                if g.get("channel"):
+                    result["channel"] = g["channel"]
+                if g.get("stream"):
+                    result["stream"] = g["stream"]
+                # Hora de fin → label "00:00 – 01:00"
+                if g.get("end_hour") is not None:
+                    try:
+                        end_dt = datetime(
+                            int(g["year"]), int(g["month"]), int(g["day"]),
+                            int(g["end_hour"]),
+                            int(g.get("end_minute", 0)),
+                            int(g.get("end_second", 0)),
+                        )
+                        result["end_label"]  = end_dt.strftime("%H:%M")
+                        result["hour_label"] = f"{dt.strftime('%H:%M')} – {end_dt.strftime('%H:%M')}"
+                    except ValueError:
+                        pass
+                return result
+            except ValueError:
+                continue
+    return None
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+def _save_new_device(ip, alias="", location=""):
+    """Guardar nuevo dispositivo en config.json si no existe"""
+    devices = config_instance.get("devices", {})
+    if ip not in devices:
+        devices[ip] = {"alias": alias or ip, "location": location}
+        config_instance.set("devices", devices)
+        logger_instance.info("app",f"Nuevo dispositivo agregado: {ip} (alias: {alias}, location: {location})")
+
+def _scan_devices() -> dict:
+    """
+    Escanea videos_dir buscando subcarpetas que representen dispositivos (IPs).
+    Estructura de retorno:
+    {
+      "192.168.0.33": {
+        "ip": "...", "alias": "...", "location": "...",
+        "files": [ { path, name, size, datetime, date, hour, ... }, ... ],
+        "total": N
+      }, ...
+    }
+    """
+    base    = Path(_VIDEOS_DIR)
+    devices = config_instance.get("devices", {})
+    result  = {}
+
+    if not base.exists():
+        return result
+
+    for device_dir in sorted(base.iterdir()):
+        if not device_dir.is_dir():
+            continue
+
+        ip          = device_dir.name
+        
+        if ip not in devices:
+            _save_new_device(ip)
+            devices = config_instance.get("devices", {})  # Recargar después de guardar
+        
+        device_info = devices.get(ip, {})
+        files       = []
+
+        for f in sorted(device_dir.rglob("*")):
+            if not f.is_file() or f.suffix.lower() not in _ALLOWED:
+                continue
+
+            rel  = str(f.relative_to(base))
+            meta = _parse_filename_datetime(f.name) or {}
+
+            files.append({
+                "name":            f.name,
+                "path":            rel,
+                "size":            f.stat().st_size,
+                "modified":        f.stat().st_mtime,
+                "device_ip":       ip,
+                "device_alias":    device_info.get("alias", ip),
+                "device_location": device_info.get("location", ""),
+                **meta,
+            })
+
+        result[ip] = {
+            "ip":       ip,
+            "alias":    device_info.get("alias", ip),
+            "location": device_info.get("location", ""),
+            "files":    files,
+            "total":    len(files),
+        }
+
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HTTP Range Request support
+# ─────────────────────────────────────────────────────────────────────────────
+
+def stream_file_with_ranges(file_path: str, mimetype: str = "video/mp4") -> Response:
+    """
+    Sirve un archivo con soporte completo de HTTP Range Requests.
+    Necesario para que el <video> del navegador pueda hacer seeking.
+    """
+    file_size    = os.path.getsize(file_path)
+    range_header = request.headers.get("Range")
+
+    if range_header:
+        byte_range = range_header.replace("bytes=", "").split("-")
+        start  = int(byte_range[0]) if byte_range[0] else 0
+        end    = int(byte_range[1]) if len(byte_range) > 1 and byte_range[1] else file_size - 1
+        end    = min(end, file_size - 1)
+        length = end - start + 1
+
+        def _gen_range():
+            with open(file_path, "rb") as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    data = f.read(min(65536, remaining))
+                    if not data:
+                        break
+                    remaining -= len(data)
+                    yield data
+
+        return Response(
+            _gen_range(),
+            status=206,
+            headers={
+                "Content-Range":  f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges":  "bytes",
+                "Content-Length": str(length),
+                "Content-Type":   mimetype,
+            },
         )
 
-        try:
-            stdout, stderr = process.communicate(timeout=timeout)
+    def _gen_full():
+        with open(file_path, "rb") as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                yield chunk
 
-            if process.returncode == 0:
-                # Conversión exitosa
-                os.rename(tmp_path, mp4_path)
+    return Response(
+        _gen_full(),
+        status=200,
+        headers={
+            "Content-Length": str(file_size),
+            "Accept-Ranges":  "bytes",
+            "Content-Type":   mimetype,
+        },
+    )
 
-                # CORREGIR: Registrar el archivo FINAL, no el temporal
-                temp_manager.register_file(mp4_path)
-                
-                # Limpiar archivos temporales si está habilitado
-                if config.get("CONVERSION_CLEANUP_TEMP", True):
-                    cleanup_temp_files(dav_path, mp4_path)
 
-                elapsed_time = time.time() - start_time
-                print(f"Conversión completada en {elapsed_time:.2f} segundos")
-                return True
-            else:
-                print(f"Error en conversión: {stderr}")
-                return False
+# ─────────────────────────────────────────────────────────────────────────────
+# RUTAS FLASK — existentes
+# ─────────────────────────────────────────────────────────────────────────────
 
-        except subprocess.TimeoutExpired:
-            print(f"Conversión cancelada por timeout ({timeout}s)")
-            process.kill()
-            return False
+@app.route("/upload", methods=["POST"])
+def upload():
+    """Recibe un .dav (o cualquier video) y lo guarda en disco."""
+    if "file" not in request.files:
+        return jsonify({"error": "No se envió archivo"}), 400
 
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"error": "Nombre de archivo vacío"}), 400
+
+    ext     = Path(f.filename).suffix.lower()
+    allowed = {".dav", ".mp4", ".avi", ".mkv", ".ts", ".mov"}
+    if ext not in allowed:
+        return jsonify({
+            "error": f"Extensión '{ext}' no soportada. Use: {', '.join(allowed)}"
+        }), 400
+
+    safe_name = f"{int(time.time())}_{Path(f.filename).stem}{ext}"
+    save_path = os.path.join(_VIDEOS_DIR, safe_name)
+    f.save(save_path)
+
+    return jsonify({
+        "success":      True,
+        "filename":     safe_name,
+        "size":         os.path.getsize(save_path),
+        "stream_url":   f"/stream/{safe_name}",
+        "download_url": f"/download/{safe_name}",
+    })
+
+
+@app.route("/stream/<path:filepath>")
+def stream_video(filepath):
+    """
+    Stream del video convertido a MP4.
+    Acepta tanto nombres planos ('video.dav') como rutas con subcarpeta
+    ('192.168.0.33/20250125_120000.dav').
+
+    Query params:
+      ?mode=cache  (default) — convierte completo, sirve con Range Requests.
+      ?mode=live             — stream durante la conversión.
+    """
+    from urllib.parse import unquote
+    
+    # Decodificar URL encoding si lo hay
+    filepath = unquote(filepath)
+    
+    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    logger_instance.info("app", f"Stream request: {filepath} -> {dav_path}")
+    
+    if not os.path.exists(dav_path):
+        logger_instance.error("app", f"Archivo no encontrado: {dav_path}")
+        return jsonify({
+            "error": f"Archivo no encontrado: {filepath}",
+            "requested_path": filepath,
+            "resolved_path": dav_path
+        }), 404
+
+    mode = request.args.get("mode", "cache")
+
+    if mode == "live":
+        return Response(
+            _remux_streaming(dav_path),
+            mimetype="video/mp4",
+            headers={
+                "Content-Disposition": (
+                    f'inline; filename="{Path(filepath).stem}.mp4"'
+                ),
+                "Cache-Control": "no-cache",
+            },
+        )
+
+    try:
+        logger_instance.info("app", f"Convirtiendo a MP4: {dav_path}")
+        mp4_path = get_or_create_mp4(dav_path)
+        logger_instance.info("app", f"MP4 listo: {mp4_path}")
+        return stream_file_with_ranges(mp4_path)
     except Exception as e:
-        print(f"Error en conversión: {e}")
-        return False
-    finally:
-        # Limpiar archivos temporales
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        if os.path.exists(lock_path):
-            os.remove(lock_path)
+        logger_instance.error("app", f"Error convirtiendo {dav_path}: {str(e)}")
+        return jsonify({
+            "error": f"Error convirtiendo: {str(e)}",
+            "file": filepath
+        }), 500
 
-def cleanup_temp_files(dav_path, mp4_path):
-    """
-    Limpia archivos temporales relacionados con la conversión
-    """
-    import os
-    import glob
-    
+
+@app.route("/download/<path:filepath>")
+def download_mp4(filepath):
+    """Descarga directa del MP4 convertido."""
+    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    if not os.path.exists(dav_path):
+        abort(404)
+
     try:
-        # Limpiar archivos temporales de FFmpeg
-        base_name = os.path.splitext(mp4_path)[0]
-        temp_patterns = [
-            f"{base_name}*.tmp",
-            f"{base_name}*.temp",
-            f"{base_name}*.log"
-        ]
-        
-        for pattern in temp_patterns:
-            for temp_file in glob.glob(pattern):
-                try:
-                    os.remove(temp_file)
-                except:
-                    pass
-                    
+        mp4_path = get_or_create_mp4(dav_path)
     except Exception as e:
-        print(f"Error limpiando archivos temporales: {e}")
+        return jsonify({"error": str(e)}), 500
 
-def validate_conversion_config(config):
-    """
-    Valida la configuración de conversión
-    """
-    errors = []
-    
-    # Validar método de conversión
-    valid_methods = ["software", "nvidia", "amd", "intel", "auto"]
-    if config.get("CONVERSION_METHOD") not in valid_methods:
-        errors.append(f"Método de conversión inválido. Opciones: {', '.join(valid_methods)}")
-    
-    # Validar preset
-    valid_presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
-    if config.get("CONVERSION_PRESET") not in valid_presets:
-        errors.append(f"Preset inválido. Opciones: {', '.join(valid_presets)}")
-    
-    # Validar CRF
-    crf = config.get("CONVERSION_CRF", 23)
-    if not (0 <= crf <= 51):
-        errors.append("CRF debe estar entre 0 y 51")
-    
-    # Validar resolución
-    valid_resolutions = ["original", "1080p", "720p", "480p"]
-    if config.get("CONVERSION_RESOLUTION") not in valid_resolutions:
-        errors.append(f"Resolución inválida. Opciones: {', '.join(valid_resolutions)}")
-    
-    # Validar threads
-    threads = config.get("CONVERSION_THREADS", 0)
-    if threads < 0:
-        errors.append("Número de threads no puede ser negativo")
-    
-    # Validar timeout
-    timeout = config.get("CONVERSION_TIMEOUT", 300)
-    if timeout < 30:
-        errors.append("Timeout mínimo es 30 segundos")
-    
-    return errors
+    stem = Path(filepath).stem
 
-def test_conversion_capabilities():
-    """
-    Prueba las capacidades de conversión disponibles
-    """
-    
-    capabilities = {
-        "ffmpeg_available": False,
-        "nvidia_available": False,
-        "amd_available": False,
-        "intel_available": False,
-        "supported_encoders": []
-    }
-    
-    # Verificar FFmpeg
+    def _gen():
+        with open(mp4_path, "rb") as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                yield chunk
+
+    return Response(
+        _gen(),
+        mimetype="video/mp4",
+        headers={
+            "Content-Disposition": f'attachment; filename="{stem}.mp4"',
+            "Content-Length":      str(os.path.getsize(mp4_path)),
+        },
+    )
+
+
+@app.route("/status/<path:filepath>")
+def file_status(filepath):
+    """Info del archivo: codec, resolución, duración, FPS."""
+    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    if not os.path.exists(dav_path):
+        return jsonify({"error": "Archivo no encontrado"}), 404
+
     try:
-        result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
-        capabilities["ffmpeg_available"] = result.returncode == 0
-    except:
-        return capabilities
-    
-    # Verificar encoders disponibles
-    try:
-        result = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True)
-        if result.returncode == 0:
-            encoders = result.stdout
-            
-            # Verificar NVIDIA
-            if "h264_nvenc" in encoders:
-                capabilities["nvidia_available"] = True
-                capabilities["supported_encoders"].append("h264_nvenc")
-            
-            # Verificar AMD
-            if "h264_amf" in encoders:
-                capabilities["amd_available"] = True
-                capabilities["supported_encoders"].append("h264_amf")
-            
-            # Verificar Intel
-            if "h264_qsv" in encoders:
-                capabilities["intel_available"] = True
-                capabilities["supported_encoders"].append("h264_qsv")
-            
-            # Software encoder
-            if "libx264" in encoders:
-                capabilities["supported_encoders"].append("libx264")
-                
-    except:
-        pass
-    
-    return capabilities
-
-def is_temp_video_ready(temp_path):
-    """
-    Verifica si un video temporal está listo y completo
-    """
-    if not temp_path.exists():
-        return False
-    
-    # Verifica el registro en el gestor temporal
-    if not temp_manager.access_file(temp_path):
-        return False
-    
-    # Verificar que no hay archivo lock
-    lock_path = f'{str(temp_path)}.lock'
-    if os.path.exists(lock_path):
-        return False
-    
-    # Verificar que el archivo tiene contenido
-    if temp_path.stat().st_size == 0:
-        return False
-    
-    # Verificar que el archivo no está creciendo (estable por al menos 2 segundos)
-    try:
-        size1 = temp_path.stat().st_size
-        time.sleep(2)
-        if not temp_path.exists():
-            return False
-        size2 = temp_path.stat().st_size
-        return size1 == size2 and size1 > 0
-    except:
-        return False
-
-# Ejemplo de uso en la función convert_dav_to_mp4 existente
-def convert_dav_to_mp4(dav_path, mp4_path):
-    """
-    Función de conversión actualizada que usa la configuración avanzada
-    """
-    # Cargar configuración actual
-    config = load_config()
-    
-    # Usar la conversión avanzada
-    return convert_dav_to_mp4_advanced(dav_path, mp4_path, config)
-            
-@app.route('/api/temp_files_status')
-@login_required
-def temp_files_status():
-    """API para obtener el estado de los archivos temporales"""
-    return jsonify(temp_manager.get_status())
-
-@app.route('/api/force_temp_cleanup', methods=['POST'])
-@login_required
-def force_temp_cleanup():
-    """API para forzar limpieza de archivos temporales"""
-    removed = temp_manager.force_cleanup()
-    return jsonify({'removed_files': removed})            
-            
-@app.route('/configuration')
-@login_required
-def configuration():
-    """Página de configuración"""
-    current_config = load_config()
-    return render_template('configuration.html', config=current_config)
-
-def get_int_form(name, default):
-    try:
-        value = request.form.get(name, str(default))
-        return int(value) if value.strip() != '' else default
-    except Exception:
-        return default
-
-@app.route('/save_configuration', methods=['POST'])
-@login_required
-def save_configuration():
-    """Guardar configuración"""
-    try:
-        new_config = {
-            'FTP_HOST': request.form.get('ftp_host', 'localhost'),
-            'FTP_PORT': get_int_form('ftp_port', 60000),
-            'VIDEO_DIR': request.form.get('video_dir', 'dahua_videos'),
-            'LOG_DIR': request.form.get('log_dir', 'logs'),
-            'ALIAS_FILE': request.form.get('alias_file', 'dahua_videos/folder_aliases.json'),
-            'TEMP_DIR': request.form.get('temp_dir', 'temp'),
-            'ATTEMPS_LOGGING': get_int_form('attemps_logging', 0),
-            'ATTEMPS_MAX': get_int_form('attemps_max', 5),
-            'CHANGELOG_FILE': request.form.get('changelog_file', 'changelog.json'),
-            'LAST_COMMIT_FILE': request.form.get('last_commit_file', 'last_commit.txt'),
-            'KEEP_DAYS': get_int_form('keep_days', 7),
-            'MAX_CONNECTIONS': get_int_form('max_connections', 256),
-            'MAX_CONNECTIONS_PER_IP': get_int_form('max_connections_per_ip', 5),
-            'BLOCK_DURATION': get_int_form('block_duration', 300),
-            'WEB_PORT': get_int_form('web_port', 5000),
-            'WEB_HOST': request.form.get('web_host', '0.0.0.0'),
-            'CONVERSION_ENABLED': request.form.get('conversion_enabled', '1') == '1',
-            'CONVERSION_METHOD': request.form.get('conversion_method', 'software'),
-            'CONVERSION_PRESET': request.form.get('conversion_preset', 'fast'),
-            'CONVERSION_CRF': get_int_form('conversion_crf', 23),
-            'CONVERSION_RESOLUTION': request.form.get('conversion_resolution', 'original'),
-            'CONVERSION_THREADS': get_int_form('conversion_threads', 0),
-            'CONVERSION_TIMEOUT': get_int_form('conversion_timeout', 300),
-            'CONVERSION_AUDIO_CODEC': request.form.get('conversion_audio_codec', 'aac'),
-            'CONVERSION_AUDIO_BITRATE': request.form.get('conversion_audio_bitrate', '128k'),
-            'CONVERSION_CLEANUP_TEMP': request.form.get('conversion_cleanup_temp', '1') == '1',
-            'CONVERSION_CUSTOM_ARGS': request.form.get('conversion_custom_args', ''),
-            
-            'TEMP_FILE_MAX_AGE': get_int_form('temp_file_max_age', 1800),  # 30 minutos
-            'TEMP_CLEANUP_INTERVAL': get_int_form('temp_cleanup_interval', 1800),  # 30 minutos
+        import av
+        info: dict = {
+            "filename":   filepath,
+            "size_bytes": os.path.getsize(dav_path),
+            "streams":    [],
         }
-        
-        # Guardar configuración
-        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(new_config, f, indent=2, ensure_ascii=False)
-        flash('Configuración guardada correctamente. Reinicia el servidor para aplicar los cambios.', 'success')
+        with av.open(dav_path) as c:
+            info["duration_sec"] = float(c.duration / 1e6) if c.duration else None
+            for s in c.streams:
+                if s.type == "video":
+                    info["streams"].append({
+                        "type":   "video",
+                        "codec":  s.codec_context.name,
+                        "width":  s.width,
+                        "height": s.height,
+                        "fps":    float(s.average_rate) if s.average_rate else None,
+                    })
+                elif s.type == "audio":
+                    info["streams"].append({
+                        "type":        "audio",
+                        "codec":       s.codec_context.name,
+                        "sample_rate": s.sample_rate,
+                        "channels":    s.channels,
+                    })
+        return jsonify(info)
     except Exception as e:
-        flash(f'Error al guardar la configuración: {str(e)}', 'error')
-    return redirect(url_for('configuration'))
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/reset_configuration', methods=['POST'])
-@login_required
-def reset_configuration():
-    """Resetear configuración a valores por defecto"""
-    try:
-        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(DEFAULT_CONFIG, f, indent=2, ensure_ascii=False)
-        flash('Configuración restablecida a valores por defecto', 'success')
-    except Exception as e:
-        flash(f'Error al restablecer la configuración: {str(e)}', 'error')
-    
-    return redirect(url_for('configuration'))
 
-@app.route('/help')
-@login_required
-def help_page():
-    """Página de ayuda del sistema"""
-    return render_template('help.html')
-
-@app.route('/play/<path:filename>')
-@login_required
-def play_video(filename):
-    """Convierte y reproduce un video .dav temporalmente"""
-    video_path = VIDEO_DIR / filename
-    if not video_path.exists():
-        flash("Archivo no encontrado", "error")
-        return redirect(url_for('videos'))
-
-    if video_path.suffix.lower() != ".dav":
-        return render_template('player.html', video_file=url_for('download_video', filename=filename))
-    
-    temp_name = f"{session['username']}_{video_path.stem}.mp4"
-    temp_path = Path(get_temp_dir()) / temp_name
-
-    # Verificar si el video temporal ya está listo
-    if is_temp_video_ready(temp_path):
-        return redirect(url_for('player_temp', temp_filename=temp_name))
-    
-    lock_path = f'{str(temp_path)}.lock'
-    if not os.path.exists(lock_path):
-        if temp_path.exists():
-            temp_path.unlink()
-        threading.Thread(target=convert_dav_to_mp4, args=(video_path, temp_path)).start()
-    
-    return render_template('preparing.html', temp_filename=temp_name)
-
-@app.route('/temp_video/<temp_filename>')
-@login_required
-def temp_video(temp_filename):
-    """Sirve el archivo mp4 temporal"""
-    temp_path = Path(get_temp_dir()) / temp_filename
-    
-    # Verificar y actualizar acceso al archivo
-    if not temp_manager.access_file(temp_path):
-        flash("El video temporal expiró. Intenta de nuevo.", "error")
-        return redirect(url_for('videos'))
-        
-    return send_from_directory(get_temp_dir(), temp_filename, as_attachment=False)
-
-@app.route('/check_temp_video/<temp_filename>')
-@login_required
-def check_temp_video(temp_filename):
-    """API para saber si el video temporal ya está listo y estable"""
-    temp_path = Path(get_temp_dir()) / temp_filename
-    ready = is_temp_video_ready(temp_path)
-    return jsonify({'ready': ready})
-
-@app.route('/player_temp/<temp_filename>')
-@login_required
-def player_temp(temp_filename):
-    """Muestra el reproductor para el video temporal"""
-    temp_path = Path(get_temp_dir()) / temp_filename
-    if not temp_path.exists():
-        flash("El video temporal expiró. Intenta de nuevo.", "error")
-        return redirect(url_for('videos'))
-    return render_template('player.html', video_file=url_for('temp_video', temp_filename=temp_filename))
-
-@app.route('/multi_channel_player')
-@login_required
-def multi_channel_player():
-    """Página del reproductor multi-canal"""
-    selected_videos = request.args.getlist('videos')
-    layout = request.args.get('layout', '2x2')
-    folder = request.args.get('folder', '')
-    
-    if not selected_videos:
-        flash("No se seleccionaron videos para reproducir", "error")
-        return redirect(url_for('videos'))
-    
-    # Obtener información de los videos seleccionados
-    videos_info = []
-    for video_path in selected_videos:
-        full_path = VIDEO_DIR / video_path
-        if full_path.exists():
-            # Parsear información del canal
-            parsed_info = parse_video_filename_server(full_path.name)
-            
-            videos_info.append({
-                'path': video_path,
-                'name': full_path.name,
-                'size': full_path.stat().st_size,
-                'channel': parsed_info.get('channel', 'N/A'),
-                'device': parsed_info.get('device', 'Unknown'),
-                'start_time': parsed_info.get('start_time', ''),
-                'is_dav': full_path.suffix.lower() == '.dav'
+@app.route("/files")
+def list_files():
+    """
+    Lista archivos planos en el directorio raíz de videos (compatibilidad).
+    Para la vista por dispositivo usa /api/devices.
+    """
+    files  = []
+    base   = Path(_VIDEOS_DIR)
+    for f in sorted(base.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        if f.is_file() and f.suffix.lower() in _ALLOWED:
+            files.append({
+                "name":         f.name,
+                "size":         f.stat().st_size,
+                "stream_url":   f"/stream/{f.name}",
+                "download_url": f"/download/{f.name}",
             })
-    
-    return render_template('multi_channel_player.html', 
-                         videos=videos_info, 
-                         layout=layout,
-                         folder=folder)
+    return jsonify(files)
 
-@app.route('/api/prepare_multi_videos', methods=['POST'])
-@login_required
-def prepare_multi_videos():
-    """Preparar videos para reproducción multi-canal"""
-    video_paths = request.json.get('videos', [])
-    prepared_videos = []
-    
-    for video_path in video_paths:
-        full_path = VIDEO_DIR / video_path
-        if not full_path.exists():
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RUTAS FLASK — nuevas (dispositivos, fecha, playlist)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/devices")
+def api_devices():
+    """
+    Lista todos los dispositivos con sus archivos y metadatos de fecha/hora.
+    Cada subcarpeta de videos_dir se trata como un dispositivo.
+    """
+    return jsonify(_scan_devices())
+
+
+@app.route("/api/files/by-date")
+def api_files_by_date():
+    """
+    Retorna archivos de todos los dispositivos agrupados por fecha.
+
+    Query params opcionales:
+      ?date=2025-01-25   → filtra por fecha
+      ?ip=192.168.0.33   → filtra por dispositivo
+    """
+    date_filter = request.args.get("date")
+    ip_filter   = request.args.get("ip")
+
+    devices = _scan_devices()
+    # { "2025-01-25": { "192.168.0.33": [files...] } }
+    result: dict = {}
+
+    for ip, dev in devices.items():
+        if ip_filter and ip != ip_filter:
             continue
-            
-        video_info = {
-            'path': video_path,
-            'name': full_path.name,
-            'ready': True,
-            'url': url_for('download_video', filename=video_path)
-        }
-        
-        # Si es archivo DAV, verificar conversión
-        if full_path.suffix.lower() == '.dav':
-            temp_name = f"{session['username']}_{full_path.stem}.mp4"
-            temp_path = Path(get_temp_dir()) / temp_name
-            
-            # Verificar si el video temporal ya está listo
-            if is_temp_video_ready(temp_path):
-                video_info['url'] = url_for('temp_video', temp_filename=temp_name)
-                video_info['ready'] = True
-            else:
-                # Verificar si ya hay una conversión en progreso
-                lock_path = f'{str(temp_path)}.lock'
-                if not os.path.exists(lock_path):
-                    # Limpiar archivo temporal incompleto si existe
-                    if temp_path.exists() and temp_path.stat().st_size == 0:
-                        temp_path.unlink()
-                    
-                    # Iniciar conversión
-                    threading.Thread(
-                        target=convert_dav_to_mp4, 
-                        args=(full_path, temp_path)
-                    ).start()
-                
-                video_info['ready'] = False
-                video_info['temp_name'] = temp_name
-        
-        prepared_videos.append(video_info)
-    
-    return jsonify({'videos': prepared_videos})
+        for f in dev["files"]:
+            date = f.get("date", "unknown")
+            if date_filter and date != date_filter:
+                continue
+            result.setdefault(date, {}).setdefault(ip, []).append(f)
 
-@app.route('/api/check_conversion_status')
-@login_required
-def check_conversion_status():
-    """Verificar estado de conversión de videos"""
-    temp_names = request.args.getlist('temp_names')
-    status = {}
-    
-    for temp_name in temp_names:
-        temp_path = Path(get_temp_dir()) / temp_name
-        lock_path = f'{str(temp_path)}.lock'
-        
-        if is_temp_video_ready(temp_path):
-            status[temp_name] = {
-                'ready': True,
-                'url': url_for('temp_video', temp_filename=temp_name)
-            }
-        elif os.path.exists(lock_path):
-            status[temp_name] = {'ready': False, 'status': 'converting'}
-        else:
-            status[temp_name] = {'ready': False, 'status': 'pending'}
-    
-    return jsonify(status)
+    return jsonify(result)
 
-def parse_video_filename_server(filename):
-    """Parsear nombre de archivo de video (versión servidor)"""
-    import re
+
+@app.route("/api/playlist/day")
+def api_playlist_day():
+    """
+    Genera una playlist M3U8 para todas las horas de un dispositivo en un día.
+    Parámetros requeridos: ?ip=192.168.0.33&date=2025-01-25
+    """
+    ip   = request.args.get("ip")
+    date = request.args.get("date")
+
+    if not ip or not date:
+        return jsonify({"error": "Parámetros requeridos: ip y date"}), 400
+
+    devices = _scan_devices()
+    dev     = devices.get(ip)
+    if not dev:
+        return jsonify({"error": f"Dispositivo '{ip}' no encontrado"}), 404
+
+    day_files = sorted(
+        [f for f in dev["files"] if f.get("date") == date],
+        key=lambda f: f.get("hour", 0),
+    )
+    if not day_files:
+        return jsonify({
+            "error": f"Sin archivos para {ip} en {date}"
+        }), 404
+
+    seg_dur = config_instance.get("hls.segment_duration", 6)
+    lines   = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        f"#EXT-X-TARGETDURATION:{seg_dur}",
+        "#EXT-X-PLAYLIST-TYPE:VOD",
+    ]
+    for f in day_files:
+        lines.append(f"#EXTINF:{float(seg_dur):.6f},")
+        lines.append(f"/stream/{f['path']}")
+    lines.append("#EXT-X-ENDLIST")
+
+    return Response(
+        "\n".join(lines),
+        mimetype="application/vnd.apple.mpegurl",
+        headers={
+            "Content-Disposition": (
+                f'inline; filename="{ip.replace(".", "_")}_{date}.m3u8"'
+            )
+        },
+    )
+
+
+@app.route("/api/config")
+def api_config():
+    """Expone la configuración pública (sin datos sensibles) al frontend."""
+    return jsonify({
+        "devices":           config_instance.get("devices", {}),
+        "filename_patterns": list(config_instance.get("filename_patterns", {}).keys()),
+        "storage": {
+            "allowed_extensions": list(_ALLOWED),
+        },
+    })
+
+
+@app.route("/player")
+def player():
+    """
+    Renderiza la página del reproductor con lista de videos disponibles.
+    Los videos se obtienen recursivamente desde el directorio de videos.
+    """
+    videos = []
+    devices_cfg = config_instance.get("devices", {})
     
-    # Formato: Device_chN_main_YYYYMMDDHHMMSS_YYYYMMDDHHMMSS.ext
-    pattern = r'^(.+?)_ch(\d+)_main_(\d{8})(\d{6})_(\d{8})(\d{6})\.(.+)$'
-    match = re.match(pattern, filename)
-    
-    if match:
-        device, channel, start_date, start_time, end_date, end_time, ext = match.groups()
-        
+    def scan_dir(directory, prefix=""):
+        """Escanea recursivamente buscando archivos de video."""
         try:
-            hour = int(start_time[:2])
-            return {
-                'device': device,
-                'channel': int(channel),
-                'start_date': start_date,
-                'start_time': start_time,
-                'end_date': end_date,
-                'end_time': end_time,
-                'hour': hour,
-                'extension': ext,
-                'is_valid': True
-            }
-        except:
-            pass
+            for item in sorted(Path(directory).iterdir(), reverse=True):
+                if item.is_file() and item.suffix.lower() in _ALLOWED:
+                    rel_path = str(item.relative_to(_VIDEOS_DIR)) if prefix == "" else f"{prefix}/{item.name}"
+                    device_alias = "local" if not prefix else devices_cfg.get(prefix, {}).get("alias", prefix)
+                    
+                    videos.append({
+                        "id":              len(videos),
+                        "filename":        item.name,
+                        "path":            rel_path,
+                        "device_id":       prefix if prefix else "local",
+                        "device_alias":    device_alias,
+                        "channel_id":      "1",
+                        "recording_date":  item.stat().st_mtime,
+                        "resolution":      "1920x1080",
+                        "file_size":       item.stat().st_size,
+                        "conv_status":     "done",
+                    })
+                elif item.is_dir() and prefix == "":
+                    scan_dir(item, prefix=item.name)
+        except Exception as e:
+            logger_instance.error("app", f"Error escaneando {directory}: {e}")
+
+    scan_dir(_VIDEOS_DIR)
     
-    return {'is_valid': False, 'device': 'Unknown', 'channel': 'N/A'}
+    return render_template("player.html", 
+                          videos=videos, 
+                          video_count=len(videos))
 
-def load_folder_aliases():
-    if ALIAS_FILE.exists():
-        with open(ALIAS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
 
-def save_folder_aliases(aliases):
-    with open(ALIAS_FILE, "w", encoding="utf-8") as f:
-        json.dump(aliases, f, ensure_ascii=False, indent=2)
+# ─────────────────────────────────────────────────────────────────────────────
+# RUTAS AJAX — Configuración (Settings)
+# ─────────────────────────────────────────────────────────────────────────────
 
-@app.route('/set_folder_alias', methods=['POST'])
-@login_required
-def set_folder_alias():
-    folder = request.form['folder']
-    alias = request.form['alias']
-    aliases = load_folder_aliases()
-    aliases[folder] = alias
-    save_folder_aliases(aliases)
-    return jsonify({"success": True})
+@app.route("/api/config/current")
+def api_config_current():
+    """
+    Retorna la configuración actual completa.
+    Usado por la página de settings para rellenar formularios.
+    """
+    return jsonify({
+        "ok": True,
+        "config": {
+            "storage": config_instance.get("storage", {}),
+            "server": config_instance.get("server", {}),
+            "devices": config_instance.get("devices", {}),
+            "hls": config_instance.get("hls", {}),
+        }
+    })
 
-def clean_all_temp_videos():
-    """Elimina TODOS los archivos temporales de video al cerrar el servidor"""
-    print("Limpiando archivos temporales al cerrar servidor...")
+
+@app.route("/api/config/update", methods=["POST"])
+def api_config_update():
+    """
+    Actualiza valores de configuración.
+    Body esperado: { "key": "server.port", "value": 5000 }
+    o { "section": "server", "data": { "port": 5000, ... } }
+    """
+    try:
+        data = request.get_json() or {}
+        
+        # Actualizar campo individual
+        if "key" in data and "value" in data:
+            key = data["key"]
+            value = data["value"]
+            if key.startswith("devices.") and key.endswith(".alias"):
+                ip = key[len("devices."):-len(".alias")]
+                devices = config_instance.get("devices", {})
+                devices.setdefault(ip, {})["alias"] = value
+                config_instance.modify_value("devices", devices)
+            else:
+                config_instance.set(key, value)
+            logger_instance.info("app", f"Config actualizada: {key} = {value}")
+            return jsonify({"ok": True, "message": "Configuración actualizada"})
+        
+        # Actualizar sección completa
+        if "section" in data and "data" in data:
+            for key, value in data["data"].items():
+                config_instance.set(f"{data['section']}.{key}", value)
+            logger_instance.info("app", f"Sección '{data['section']}' actualizada")
+            return jsonify({"ok": True, "message": f"Sección {data['section']} actualizada"})
+        
+        return jsonify({"ok": False, "error": "Parámetros inválidos"}), 400
     
-    # Detener hilo de limpieza
-    temp_manager.stop_cleanup_thread()
-    
-    # Forzar limpieza con edad 0 (todos los archivos)
-    temp_manager.cleanup_old_files(max_age=0)
-    
-    # Limpieza adicional por patrones (backup)
-    temp_dir = Path(get_temp_dir())
-    patterns = ["*_*.mp4", "*_*.tmp.mp4", "*_*.mp4.lock"]
-    for pattern in patterns:
-        for f in temp_dir.glob(pattern):
-            with contextlib.suppress(Exception):
-                f.unlink()
-                print(f"Archivo eliminado: {f}")
+    except Exception as e:
+        logger_instance.error("app", f"Error actualizando config: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
-# Limpieza al cerrar el servidor (funciona en la mayoría de los casos)
-atexit.register(clean_all_temp_videos)
 
-# Opcional: también puedes limpiar con señales (Ctrl+C, kill)
-def handle_exit(signum, frame):
-    clean_all_temp_videos()
-    os._exit(0)
-signal.signal(signal.SIGINT, handle_exit)
-signal.signal(signal.SIGTERM, handle_exit)
+@app.route("/api/video-check/<path:filepath>")
+def check_video(filepath):
+    """
+    Verifica que un archivo existe y es accesible.
+    Útil para debugging de problemas de streaming.
+    """
+    from urllib.parse import unquote
+    filepath = unquote(filepath)
+    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    
+    exists = os.path.exists(dav_path)
+    is_file = os.path.isfile(dav_path) if exists else False
+    file_size = os.path.getsize(dav_path) if is_file else None
+    readable = os.access(dav_path, os.R_OK) if exists else False
+    
+    logger_instance.info("app", f"Check: {filepath} -> exists={exists}, is_file={is_file}, size={file_size}, readable={readable}")
+    
+    return jsonify({
+        "filepath": filepath,
+        "full_path": dav_path,
+        "exists": exists,
+        "is_file": is_file,
+        "file_size": file_size,
+        "readable": readable,
+        "stream_url": f"/stream/{filepath}" if is_file else None
+    })
 
-if __name__ == '__main__':
-    # Crear directorios necesarios
-    VIDEO_DIR.mkdir(exist_ok=True)
-    LOG_DIR.mkdir(exist_ok=True)
-    
-    print("=== Cliente Web FTP Dahua ===")
-    print("Accede a: http://localhost:5000")
-    print("=============================")
-    
-    app.run(debug=True, host='0.0.0.0', port=5000)
+
+@app.route("/settings")
+def settings_page():
+    """
+    Renderiza la página de configuración con formularios AJAX.
+    """
+    return render_template(
+        "settings.html",
+        server=config_instance.get("server", {}),
+        storage=config_instance.get("storage", {}),
+        hls=config_instance.get("hls", {}),
+        devices=config_instance.get("devices", {}),
+    )
+
+
+@app.post("/settings/update/<section>")
+def settings_update(section):
+    """
+    Actualiza secciones de configuración desde formularios HTML.
+    """
+    try:
+        if section == "server":
+            host = request.form.get("host", "0.0.0.0")
+            port = int(request.form.get("port", 5000))
+            debug = request.form.get("debug") == "on"
+            max_upload_gb = int(request.form.get("max_upload_gb", 4))
+            config_instance.set("server.host", host)
+            config_instance.set("server.port", port)
+            config_instance.set("server.debug", debug)
+            config_instance.set("server.max_upload_gb", max_upload_gb)
+        elif section == "storage":
+            videos_dir = request.form.get("videos_dir", "dahua_videos")
+            cache_dir = request.form.get("cache_dir", "cache")
+            ext_raw = request.form.get("allowed_extensions", ".dav, .mp4, .avi, .mkv")
+            exts = [e.strip() for e in ext_raw.split(",") if e.strip()]
+            config_instance.set("storage.videos_dir", videos_dir)
+            config_instance.set("storage.cache_dir", cache_dir)
+            config_instance.set("storage.allowed_extensions", exts)
+        elif section == "hls":
+            segment_duration = int(request.form.get("segment_duration", 3600))
+            config_instance.set("hls.segment_duration", segment_duration)
+        else:
+            flash("Sección inválida", "error")
+            return redirect(url_for("settings_page"))
+
+        flash("Configuración actualizada", "success")
+    except Exception as e:
+        logger_instance.error("app", f"Error actualizando {section}: {e}")
+        flash(f"Error actualizando {section}", "error")
+
+    return redirect(url_for("settings_page"))
+
+
+@app.post("/settings/device-alias")
+def settings_device_alias():
+    """
+    Actualiza el alias de un dispositivo desde settings.
+    """
+    try:
+        ip = request.form.get("ip", "").strip()
+        alias = request.form.get("alias", "").strip()
+        if not ip:
+            flash("IP inválida", "error")
+            return redirect(url_for("settings_page"))
+
+        if not alias:
+            alias = ip
+
+        devices = config_instance.get("devices", {})
+        devices.setdefault(ip, {})["alias"] = alias
+        config_instance.modify_value("devices", devices)
+        flash("Alias actualizado", "success")
+    except Exception as e:
+        logger_instance.error("app", f"Error actualizando alias: {e}")
+        flash("Error actualizando alias", "error")
+
+    return redirect(url_for("settings_page"))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ENTRYPOINT
+# ─────────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    srv = config_instance.get("server", {})
+    logger_instance.info("app", "Iniciando servidor...")
+    logger_instance.info("app", f"  http://{srv.get('host','0.0.0.0')}:{srv.get('port',5000)}")
+    logger_instance.info("app", f"  Videos : {_VIDEOS_DIR}/")
+    logger_instance.info("app", f"  Caché  : {_CACHE_DIR}/")
+    app.run(
+        debug=srv.get("debug", True),
+        threaded=True,
+        host=srv.get("host", "0.0.0.0"),
+        port=srv.get("port", 5000),
+    )
