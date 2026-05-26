@@ -250,7 +250,67 @@ document.addEventListener('DOMContentLoaded', () => {
   // Activar el primer slot por defecto
   activateSlot(0);
   initSidebarFilters();
+  initSidebarToggle();
+  initFullscreenToggle();
+  formatRecordingDates();
 });
+
+function formatRecordingDates() {
+  const elements = document.querySelectorAll('.file-date[data-recording-ts]');
+  elements.forEach(el => {
+    const raw = el.dataset.recordingTs;
+    const ts = parseFloat(raw);
+    if (Number.isNaN(ts) || ts <= 0) {
+      el.textContent = '';
+      return;
+    }
+    const date = new Date(ts * 1000);
+    const day = date.toISOString().slice(0, 10);
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    el.textContent = `${day} ${hour}:${minute}`;
+  });
+}
+
+function initFullscreenToggle() {
+  document.addEventListener('fullscreenchange', updateFullscreenButton);
+  updateFullscreenButton();
+}
+
+function updateFullscreenButton() {
+  const btn = document.getElementById('btn-fullscreen');
+  if (!btn) return;
+  btn.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen';
+}
+
+function toggleGridFullscreen() {
+  const grid = document.querySelector('.video-grid');
+  if (!grid) return;
+
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+    return;
+  }
+
+  grid.requestFullscreen().catch(() => {});
+}
+
+function initSidebarToggle() {
+  const layout = document.getElementById('player-layout');
+  const toggle = document.getElementById('sidebar-toggle');
+  if (!layout || !toggle) return;
+
+  const setState = (collapsed) => {
+    layout.classList.toggle('sidebar-collapsed', collapsed);
+    toggle.textContent = collapsed ? '>>' : 'Ocultar';
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  };
+
+  toggle.addEventListener('click', () => {
+    const collapsed = layout.classList.contains('sidebar-collapsed');
+    setState(!collapsed);
+  });
+}
 
 function initSidebarFilters() {
   const list = document.querySelector('.file-list');
@@ -265,17 +325,23 @@ function initSidebarFilters() {
 
   if (!deviceSel || !channelSel || !daySel || !hourSel || !clearBtn) return;
 
-  const devices = new Set();
+  const devices = new Map();
   const channels = new Set();
   const days = new Set();
   const hours = new Set();
 
   items.forEach(item => {
     const deviceId = item.dataset.deviceId || '';
+    const deviceAlias = item.dataset.deviceAlias || '';
     const channelId = item.dataset.channelId || '';
     const tsRaw = item.dataset.recordingTs || '';
 
-    if (deviceId) devices.add(deviceId);
+    if (deviceId) {
+      const label = deviceAlias && deviceAlias !== deviceId
+        ? `${deviceAlias} (${deviceId})`
+        : deviceId;
+      devices.set(deviceId, label);
+    }
     if (channelId) channels.add(channelId);
 
     const ts = parseFloat(tsRaw);
@@ -290,7 +356,7 @@ function initSidebarFilters() {
     }
   });
 
-  fillSelect(deviceSel, devices, (v) => v);
+  fillSelectMap(deviceSel, devices);
   fillSelect(channelSel, channels, (v) => `ch${v}`);
   fillSelect(daySel, days, (v) => v, true);
   fillSelect(hourSel, hours, (v) => `${v}:00`, true);
@@ -336,6 +402,18 @@ function fillSelect(selectEl, values, labelFn, sortAsc = false) {
     const opt = document.createElement('option');
     opt.value = val;
     opt.textContent = labelFn(val);
+    selectEl.appendChild(opt);
+  });
+}
+
+function fillSelectMap(selectEl, mapValues) {
+  const entries = Array.from(mapValues.entries())
+    .sort((a, b) => a[1].localeCompare(b[1]));
+
+  entries.forEach(([value, label]) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
     selectEl.appendChild(opt);
   });
 }

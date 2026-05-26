@@ -13,47 +13,6 @@
   </div>
 
 <!-- Estadísticas principales -->
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-icon">V</div>
-    <div class="stat-value">{{ stats.total or 0 }}</div>
-    <div class="stat-label">Total Videos</div>
-  </div>
-  
-  <div class="stat-card highlight">
-    <div class="stat-icon">+</div>
-    <div class="stat-value">{{ stats.new_count or 0 }}</div>
-    <div class="stat-label">New Videos</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon">OK</div>
-    <div class="stat-value">{{ stats.converted_count or 0 }}</div>
-    <div class="stat-label">Converted</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon">D</div>
-    <div class="stat-value">{{ stats.devices or 0 }}</div>
-    <div class="stat-label">Devices</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon">C</div>
-    <div class="stat-value">{{ stats.channels or 0 }}</div>
-    <div class="stat-label">Channels</div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon">S</div>
-    <div class="stat-value">
-      {% if stats.total_size %}
-        {{ "%.1f"|format(stats.total_size / 1073741824) }} GB
-      {% else %}-{% endif %}
-    </div>
-    <div class="stat-label">Storage</div>
-  </div>
-</div>
 
 <!-- Secciones principales -->
 <div class="dashboard-sections">

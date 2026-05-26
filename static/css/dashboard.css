@@ -11,9 +11,9 @@
   inset: -24px -16px auto -16px;
   height: 320px;
   background:
-    radial-gradient(600px 200px at 20% 0%, rgba(15, 158, 255, 0.12), transparent 60%),
-    radial-gradient(400px 180px at 80% 20%, rgba(15, 192, 103, 0.08), transparent 60%),
-    linear-gradient(180deg, rgba(15, 15, 15, 0.9), rgba(10, 10, 10, 0));
+    radial-gradient(600px 200px at 15% 0%, rgba(37, 99, 235, 0.18), transparent 60%),
+    radial-gradient(420px 180px at 85% 15%, rgba(22, 163, 74, 0.12), transparent 60%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(10, 16, 28, 0));
   pointer-events: none;
   z-index: 0;
 }
@@ -53,8 +53,8 @@
 .dashboard-page .stat-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #141414 0%, #0b0b0b 100%);
-  border: 1px solid #2a2a2a;
+  background: linear-gradient(135deg, rgba(18, 28, 45, 0.98), rgba(10, 16, 28, 0.98));
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 18px;
   text-align: center;
@@ -71,7 +71,7 @@
 }
 
 .dashboard-page .stat-card:hover {
-  border-color: #3a3a3a;
+  border-color: rgba(37, 99, 235, 0.4);
   transform: translateY(-2px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
 }
@@ -82,7 +82,7 @@
 
 .dashboard-page .stat-card.highlight {
   border-color: var(--accent);
-  box-shadow: 0 10px 24px rgba(15, 158, 255, 0.15);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.2);
 }
 
 .dashboard-page .stat-icon {
@@ -92,7 +92,7 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: rgba(15, 158, 255, 0.12);
+  background: rgba(37, 99, 235, 0.18);
   color: var(--accent);
   font-size: 16px;
   font-weight: 700;
@@ -102,7 +102,7 @@
 .dashboard-page .stat-value {
   font-size: 22px;
   font-weight: 600;
-  color: var(--green);
+  color: var(--accent);
   margin-bottom: 4px;
 }
 
@@ -127,8 +127,8 @@
 
 .dashboard-page .dashboard-section {
   position: relative;
-  background: linear-gradient(135deg, #151515 0%, #0b0b0b 100%);
-  border: 1px solid #2a2a2a;
+  background: linear-gradient(135deg, rgba(18, 28, 45, 0.98), rgba(10, 16, 28, 0.98));
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 22px;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -139,7 +139,7 @@
   position: absolute;
   inset: 0;
   border-radius: 14px;
-  background: linear-gradient(120deg, rgba(15, 158, 255, 0.08), transparent 35%);
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), transparent 35%);
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
@@ -166,7 +166,7 @@
 }
 
 .dashboard-page .section-badge {
-  background: rgba(15, 158, 255, 0.18);
+  background: rgba(37, 99, 235, 0.18);
   color: var(--accent);
   font-size: 11px;
   font-weight: 600;

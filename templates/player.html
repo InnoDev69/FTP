@@ -5,7 +5,6 @@
 <div class="page-header">
   <h2 class="page-title">Reproductor</h2>
   <span class="page-sub">{{ video_count }} video{{ 's' if video_count != 1 }} cargado{{ 's' if video_count != 1 }}</span>
-  <div class="page-hint">1) Selecciona un slot. 2) Elige un archivo.</div>
 </div>
 
 {% if not videos %}
@@ -15,77 +14,93 @@
 </div>
 {% else %}
 
-<!-- Grid Card: Controles globales + 6 slots -->
-<div class="grid-card">
-  <div class="grid-controls">
-    <button class="btn-control" id="btn-play-all" onclick="playAll()">Play All</button>
-    <button class="btn-control" id="btn-pause-all" onclick="pauseAll()">Pause All</button>
-    <button class="btn-control" id="btn-mute-all" onclick="muteAll()">Mute All</button>
-  </div>
-  <div class="grid-status">Slot activo: <span id="active-slot-label">1</span></div>
+<div class="player-layout" id="player-layout">
 
-  <!-- Grid 3×2 de slots -->
-  <div class="video-grid">
-    {% for i in range(6) %}
-    <div class="video-slot empty" id="slot-{{ i }}" onclick="activateSlot({{ i }})">
-      <video id="player-{{ i }}" preload="none"></video>
-      <div class="slot-overlay">
-        <span class="slot-label" id="label-{{ i }}">Slot vacío</span>
-        <div class="slot-actions">
-          <button class="slot-btn slot-play" onclick="togglePlay(event, {{ i }})">Play</button>
-          <button class="slot-btn slot-mute" onclick="toggleMute(event, {{ i }})">Mute</button>
-          <button class="slot-close" onclick="clearSlot(event, {{ i }})">x</button>
+  <!-- Sidebar: Lista de videos disponibles -->
+  <aside class="sidebar-files">
+    <div class="sidebar-header">
+      <div>
+        <h3 class="sidebar-title">Archivos disponibles</h3>
+        <div class="sidebar-sub">Selecciona un archivo para enviarlo al slot activo</div>
+      </div>
+      <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-expanded="true">Ocultar</button>
+    </div>
+    <div class="file-filters">
+      <select id="filter-device">
+        <option value="">Todos los dispositivos</option>
+      </select>
+      <select id="filter-channel">
+        <option value="">Todos los canales</option>
+      </select>
+      <select id="filter-day">
+        <option value="">Todos los dias</option>
+      </select>
+      <select id="filter-hour">
+        <option value="">Todas las horas</option>
+      </select>
+      <button class="btn-secondary" id="filter-clear" type="button">Limpiar</button>
+    </div>
+    <div class="file-list">
+      {% for video in videos %}
+      <div class="file-item"
+           data-video-id="{{ video.id }}"
+           data-device-id="{{ video.device_id }}"
+             data-device-alias="{{ video.device_alias or video.device_id }}"
+           data-channel-id="{{ video.channel_id }}"
+           data-recording-ts="{{ video.recording_date or '' }}"
+           data-path="{{ video.path }}"
+           onclick="assignFileFromElement(this)">
+        <div class="file-header">
+          <span class="file-device">{{ video.device_alias or video.device_id or '-' }}</span>
+          {% if video.device_alias and video.device_id and video.device_alias != video.device_id %}
+          <span class="file-ip">{{ video.device_id }}</span>
+          {% endif %}
+          <span class="file-channel">ch{{ video.channel_id or '?' }}</span>
+          <span class="file-date" data-recording-ts="{{ video.recording_date or '' }}"></span>
+        </div>
+        <div class="file-name">{{ video.filename }}</div>
+        <div class="file-meta">
+          <span class="badge">{{ video.resolution or '-' }}</span>
+          {% if video.file_size %}
+          <span class="badge">{{ "%.0f"|format(video.file_size / 1048576) }} MB</span>
+          {% endif %}
+          <span class="badge status-{{ video.conv_status }}">{{ video.conv_status }}</span>
         </div>
       </div>
-      <div class="slot-empty-hint">Selecciona este slot y luego un archivo</div>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
-</div>
+  </aside>
 
-<!-- Sidebar: Lista de videos disponibles -->
-<div class="sidebar-files">
-  <h3>Archivos disponibles</h3>
-  <div class="file-filters">
-    <select id="filter-device">
-      <option value="">Todos los dispositivos</option>
-    </select>
-    <select id="filter-channel">
-      <option value="">Todos los canales</option>
-    </select>
-    <select id="filter-day">
-      <option value="">Todos los dias</option>
-    </select>
-    <select id="filter-hour">
-      <option value="">Todas las horas</option>
-    </select>
-    <button class="btn-secondary" id="filter-clear" type="button">Limpiar</button>
-  </div>
-  <div class="file-list">
-    {% for video in videos %}
-    <div class="file-item" 
-         data-video-id="{{ video.id }}"
-         data-device-id="{{ video.device_id }}"
-         data-channel-id="{{ video.channel_id }}"
-         data-recording-ts="{{ video.recording_date or '' }}"
-         data-path="{{ video.path }}"
-         onclick="assignFileFromElement(this)">
-      <div class="file-header">
-        <span class="file-device">{{ video.device_id or '-' }}</span>
-        <span class="file-channel">ch{{ video.channel_id or '?' }}</span>
-        <span class="file-date">{{ video.recording_date or '' }}</span>
+<!-- Grid Card: Controles globales + 6 slots -->
+  <section class="player-main">
+    <div class="grid-card">
+      <div class="grid-controls">
+        <button class="btn-control" id="btn-play-all" onclick="playAll()">Play All</button>
+        <button class="btn-control" id="btn-pause-all" onclick="pauseAll()">Pause All</button>
+        <button class="btn-control" id="btn-mute-all" onclick="muteAll()">Mute All</button>
+        <button class="btn-control" id="btn-fullscreen" onclick="toggleGridFullscreen()">Fullscreen</button>
       </div>
-      <div class="file-name">{{ video.filename }}</div>
-      <div class="file-meta">
-        <span class="badge">{{ video.resolution or '-' }}</span>
-        {% if video.file_size %}
-        <span class="badge">{{ "%.0f"|format(video.file_size / 1048576) }} MB</span>
-        {% endif %}
-        <span class="badge status-{{ video.conv_status }}">{{ video.conv_status }}</span>
+      <div class="grid-status">Slot activo: <span id="active-slot-label">1</span></div>
+
+      <!-- Grid 3×2 de slots -->
+      <div class="video-grid">
+        {% for i in range(6) %}
+        <div class="video-slot empty" id="slot-{{ i }}" onclick="activateSlot({{ i }})">
+          <video id="player-{{ i }}" preload="none"></video>
+          <div class="slot-overlay">
+            <span class="slot-label" id="label-{{ i }}">Slot vacío</span>
+            <div class="slot-actions">
+              <button class="slot-btn slot-play" onclick="togglePlay(event, {{ i }})">Play</button>
+              <button class="slot-btn slot-mute" onclick="toggleMute(event, {{ i }})">Mute</button>
+              <button class="slot-close" onclick="clearSlot(event, {{ i }})">x</button>
+            </div>
+          </div>
+          <div class="slot-empty-hint">Selecciona este slot y luego un archivo</div>
+        </div>
+        {% endfor %}
       </div>
     </div>
-    {% endfor %}
-  </div>
+  </section>
 </div>
 
 {% endif %}

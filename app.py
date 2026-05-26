@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from flask import (
     Flask, render_template, request, Response,
-    jsonify, abort
+    jsonify, abort, redirect, url_for, flash
 )
 from src import logger_instance, config_instance
 from routes import all_blueprints
@@ -32,6 +32,11 @@ from routes import all_blueprints
 config_instance.load_config()
 
 app = Flask(__name__)
+app.secret_key = (
+    os.environ.get("SECRET_KEY")
+    or config_instance.get("server.secret_key")
+    or "dev-secret"
+)
 app.config["MAX_CONTENT_LENGTH"] = config_instance.get("server.max_upload_gb", 4) * 1024 ** 3
 
 for bp in all_blueprints:
@@ -661,6 +666,7 @@ def player():
     Los videos se obtienen recursivamente desde el directorio de videos.
     """
     videos = []
+    devices_cfg = config_instance.get("devices", {})
     
     def scan_dir(directory, prefix=""):
         """Escanea recursivamente buscando archivos de video."""
@@ -668,12 +674,14 @@ def player():
             for item in sorted(Path(directory).iterdir(), reverse=True):
                 if item.is_file() and item.suffix.lower() in _ALLOWED:
                     rel_path = str(item.relative_to(_VIDEOS_DIR)) if prefix == "" else f"{prefix}/{item.name}"
+                    device_alias = "local" if not prefix else devices_cfg.get(prefix, {}).get("alias", prefix)
                     
                     videos.append({
                         "id":              len(videos),
                         "filename":        item.name,
                         "path":            rel_path,
                         "device_id":       prefix if prefix else "local",
+                        "device_alias":    device_alias,
                         "channel_id":      "1",
                         "recording_date":  item.stat().st_mtime,
                         "resolution":      "1920x1080",
@@ -725,8 +733,16 @@ def api_config_update():
         
         # Actualizar campo individual
         if "key" in data and "value" in data:
-            config_instance.set(data["key"], data["value"])
-            logger_instance.info("app", f"Config actualizada: {data['key']} = {data['value']}")
+            key = data["key"]
+            value = data["value"]
+            if key.startswith("devices.") and key.endswith(".alias"):
+                ip = key[len("devices."):-len(".alias")]
+                devices = config_instance.get("devices", {})
+                devices.setdefault(ip, {})["alias"] = value
+                config_instance.modify_value("devices", devices)
+            else:
+                config_instance.set(key, value)
+            logger_instance.info("app", f"Config actualizada: {key} = {value}")
             return jsonify({"ok": True, "message": "Configuración actualizada"})
         
         # Actualizar sección completa
@@ -776,7 +792,77 @@ def settings_page():
     """
     Renderiza la página de configuración con formularios AJAX.
     """
-    return render_template("settings.html")
+    return render_template(
+        "settings.html",
+        server=config_instance.get("server", {}),
+        storage=config_instance.get("storage", {}),
+        hls=config_instance.get("hls", {}),
+        devices=config_instance.get("devices", {}),
+    )
+
+
+@app.post("/settings/update/<section>")
+def settings_update(section):
+    """
+    Actualiza secciones de configuración desde formularios HTML.
+    """
+    try:
+        if section == "server":
+            host = request.form.get("host", "0.0.0.0")
+            port = int(request.form.get("port", 5000))
+            debug = request.form.get("debug") == "on"
+            max_upload_gb = int(request.form.get("max_upload_gb", 4))
+            config_instance.set("server.host", host)
+            config_instance.set("server.port", port)
+            config_instance.set("server.debug", debug)
+            config_instance.set("server.max_upload_gb", max_upload_gb)
+        elif section == "storage":
+            videos_dir = request.form.get("videos_dir", "dahua_videos")
+            cache_dir = request.form.get("cache_dir", "cache")
+            ext_raw = request.form.get("allowed_extensions", ".dav, .mp4, .avi, .mkv")
+            exts = [e.strip() for e in ext_raw.split(",") if e.strip()]
+            config_instance.set("storage.videos_dir", videos_dir)
+            config_instance.set("storage.cache_dir", cache_dir)
+            config_instance.set("storage.allowed_extensions", exts)
+        elif section == "hls":
+            segment_duration = int(request.form.get("segment_duration", 3600))
+            config_instance.set("hls.segment_duration", segment_duration)
+        else:
+            flash("Sección inválida", "error")
+            return redirect(url_for("settings_page"))
+
+        flash("Configuración actualizada", "success")
+    except Exception as e:
+        logger_instance.error("app", f"Error actualizando {section}: {e}")
+        flash(f"Error actualizando {section}", "error")
+
+    return redirect(url_for("settings_page"))
+
+
+@app.post("/settings/device-alias")
+def settings_device_alias():
+    """
+    Actualiza el alias de un dispositivo desde settings.
+    """
+    try:
+        ip = request.form.get("ip", "").strip()
+        alias = request.form.get("alias", "").strip()
+        if not ip:
+            flash("IP inválida", "error")
+            return redirect(url_for("settings_page"))
+
+        if not alias:
+            alias = ip
+
+        devices = config_instance.get("devices", {})
+        devices.setdefault(ip, {})["alias"] = alias
+        config_instance.modify_value("devices", devices)
+        flash("Alias actualizado", "success")
+    except Exception as e:
+        logger_instance.error("app", f"Error actualizando alias: {e}")
+        flash("Error actualizando alias", "error")
+
+    return redirect(url_for("settings_page"))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ENTRYPOINT
