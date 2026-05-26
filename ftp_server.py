@@ -163,8 +163,15 @@ class LargeFilesDTPHandler(ThrottledDTPHandler):
     Hereda throttling de ThrottledDTPHandler y expone buffer configurable.
     Los límites read_limit / write_limit se inyectan desde FTPServerConfig.
     """
-    # Desactivar sendfile() de OS para mayor compatibilidad
-    use_sendfile = staticmethod(lambda: False)
+
+    def use_sendfile(self) -> bool:
+        """
+        Desactiva sendfile() del SO para mayor compatibilidad.
+        Se sobreescribe como método de instancia (no staticmethod) para que
+        pyftpdlib pueda llamarlo correctamente en todos los contextos,
+        incluyendo durante el logging de __repr__.
+        """
+        return False
 
 
 # ──────────────────────────────────────────────────────────────
@@ -231,6 +238,8 @@ class CustomFTPHandler(FTPHandler):
                 if getattr(dc, "file_obj", None):
                     if getattr(self.data_channel, "receive", False):
                         info["sending-file"] = dc.file_obj
+                        # use_sendfile puede ser método o bool según el contexto;
+                        # se llama solo si es callable para evitar TypeError.
                         use_sendfile = getattr(dc, "use_sendfile", None)
                         if callable(use_sendfile) and use_sendfile():
                             info["use-sendfile(2)"] = True
