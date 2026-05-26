@@ -257,10 +257,37 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarFilters();
   initSidebarToggle();
   initFullscreenToggle();
-  //formatRecordingDates();
+  formatRecordingDates();
 });
 
+function formatRecordingDates() {
+  const elements = document.querySelectorAll('.file-date[data-recording-ts]');
+  elements.forEach(el => {
+    const raw = el.dataset.recordingTs;
+    if (!raw) {
+      el.textContent = '';
+      return;
+    }
 
+    // Intentar como Unix timestamp numérico primero
+    const numeric = parseFloat(raw);
+    const date = (!Number.isNaN(numeric) && /^\d+(\.\d+)?$/.test(raw.trim()))
+      ? new Date(numeric * 1000)   // Unix timestamp
+      : new Date(raw);             // ISO string
+
+    if (isNaN(date.getTime())) {
+      el.textContent = '';
+      return;
+    }
+
+    const year   = date.getFullYear();
+    const month  = String(date.getMonth() + 1).padStart(2, '0');
+    const day    = String(date.getDate()).padStart(2, '0');
+    const hour   = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    el.textContent = `${year}-${month}-${day} ${hour}:${minute}`;
+  });
+}
 
 function initFullscreenToggle() {
   document.addEventListener('fullscreenchange', updateFullscreenButton);
