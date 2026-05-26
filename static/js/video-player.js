@@ -99,6 +99,11 @@ function assignFile(element, videoId, deviceId, channelId, path) {
     path = path.trim();
   }
 
+  // Normalizar path para URLs
+  if (typeof path === 'string') {
+    path = path.replace(/\\/g, '/');
+  }
+
   // Guardar metadata
   slots[slotIndex] = {
     videoId,

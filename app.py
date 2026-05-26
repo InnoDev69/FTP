@@ -310,7 +310,7 @@ def _scan_devices() -> dict:
             if not f.is_file() or f.suffix.lower() not in _ALLOWED:
                 continue
 
-            rel  = str(f.relative_to(base))
+            rel  = f.relative_to(base).as_posix()
             meta = _parse_filename_datetime(f.name) or {}
 
             files.append({
