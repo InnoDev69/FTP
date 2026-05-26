@@ -257,25 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarFilters();
   initSidebarToggle();
   initFullscreenToggle();
-  formatRecordingDates();
+  //formatRecordingDates();
 });
 
-function formatRecordingDates() {
-  const elements = document.querySelectorAll('.file-date[data-recording-ts]');
-  elements.forEach(el => {
-    const raw = el.dataset.recordingTs;
-    const ts = parseFloat(raw);
-    if (Number.isNaN(ts) || ts <= 0) {
-      el.textContent = '';
-      return;
-    }
-    const date = new Date(ts * 1000);
-    const day = date.toISOString().slice(0, 10);
-    const hour = String(date.getHours()).padStart(2, '0');
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    el.textContent = `${day} ${hour}:${minute}`;
-  });
-}
+
 
 function initFullscreenToggle() {
   document.addEventListener('fullscreenchange', updateFullscreenButton);

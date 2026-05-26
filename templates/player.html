@@ -55,7 +55,7 @@
           {% if video.device_alias and video.device_id and video.device_alias != video.device_id %}
           <span class="file-ip">{{ video.device_id }}</span>
           {% endif %}
-          <span class="file-channel">ch{{ video.channel_id or '?' }}</span>
+          <span class="file-channel">{{ video.channel_id or '?' }}</span>
           <span class="file-date" data-recording-ts="{{ video.recording_date or '' }}"></span>
         </div>
         <div class="file-name">{{ video.filename }}</div>
