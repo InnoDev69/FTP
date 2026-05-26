@@ -164,14 +164,8 @@ class LargeFilesDTPHandler(ThrottledDTPHandler):
     Los límites read_limit / write_limit se inyectan desde FTPServerConfig.
     """
 
-    def use_sendfile(self) -> bool:
-        """
-        Desactiva sendfile() del SO para mayor compatibilidad.
-        Se sobreescribe como método de instancia (no staticmethod) para que
-        pyftpdlib pueda llamarlo correctamente en todos los contextos,
-        incluyendo durante el logging de __repr__.
-        """
-        return False
+    # Desactivar sendfile() de OS para mayor compatibilidad
+    use_sendfile = False
 
 
 # ──────────────────────────────────────────────────────────────
@@ -224,37 +218,6 @@ class CustomFTPHandler(FTPHandler):
         logging.getLogger("FTPServer").warning(
             f"INCOMPLETO (recibo) | {self.username!r} | {file}"
         )
-
-    def get_repr_info(self, as_str=False, extra_info=None):
-        info = {}
-        info["id"] = id(self)
-        info["addr"] = f"{self.remote_ip}:{self.remote_port}"
-        if self.username:
-            info["user"] = self.username
-
-        dc = getattr(self, "data_channel", None)
-        if dc is not None:
-            try:
-                if getattr(dc, "file_obj", None):
-                    if getattr(self.data_channel, "receive", False):
-                        info["sending-file"] = dc.file_obj
-                        # use_sendfile puede ser método o bool según el contexto;
-                        # se llama solo si es callable para evitar TypeError.
-                        use_sendfile = getattr(dc, "use_sendfile", None)
-                        if callable(use_sendfile) and use_sendfile():
-                            info["use-sendfile(2)"] = True
-                    else:
-                        info["receiving-file"] = dc.file_obj
-                    if hasattr(dc, "get_transmitted_bytes"):
-                        info["bytes-trans"] = dc.get_transmitted_bytes()
-            except Exception:
-                pass
-
-        if extra_info:
-            info.update(extra_info)
-        if as_str:
-            return ", ".join([f"{k}={v!r}" for (k, v) in info.items()])
-        return info
 
 
 # ──────────────────────────────────────────────────────────────
