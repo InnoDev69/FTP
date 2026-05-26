@@ -702,7 +702,7 @@ def player():
                 "device_id":       device.get("ip", "local"),
                 "device_alias":    device.get("alias", "local"),
                 "channel_id":      channel,
-                "recording_date":  f.get("modified"),
+                "recording_date":  f.get("hour_label"),
                 "resolution":      "1920x1080",
                 "file_size":       f.get("size"),
                 "conv_status":     "done",
