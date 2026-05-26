@@ -1,56 +1,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Admin FTP Dahua{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Dahua FTP{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  {% block styles %}{% endblock %}
 </head>
 <body>
-    {% if session.logged_in %}
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <i class="fas fa-server"></i>
-                <span>FTP Admin</span>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="{{ url_for('videos') }}" class="nav-link"><i class="fas fa-video"></i> Videos</a></li>
-                <li><a href="{{ url_for('logs') }}" class="nav-link"><i class="fas fa-file-alt"></i> Logs</a></li>
-                <li><a href="{{ url_for('configuration') }}" class="nav-link"><i class="fas fa-cog"></i> Configuración</a></li>
-                <li><a href="{{ url_for('help_page') }}" class="nav-link"><i class="fas fa-question-circle"></i> Ayuda</a></li>
-                <li><a href="{{ url_for('logout') }}" class="nav-link"><i class="fas fa-sign-out-alt"></i> Salir</a></li>
-            </ul>
-        </div>
-    </nav>
-    {% endif %}
 
-    <main class="main-content">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+{% if session.logged_in %}
+<nav class="navbar">
+  <span class="navbar-brand">DAHUA<span class="accent">FTP</span></span>
+  <div class="navbar-links">
+    <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('settings_page') }}" class="{{ 'active' if request.endpoint == 'settings_page' }}">Configuracion</a>
+  </div>
+  <div class="navbar-user">
+    <span class="user-tag">{{ username }}</span>
+    <a href="{{ url_for('logout') }}" class="btn-logout">Salir</a>
+  </div>
+</nav>
+{% endif %}
 
-        {% block content %}{% endblock %}
+<main class="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
 
-        {% if update_available %}
-        <div style="position:fixed;top:10px;right:10px;z-index:9999;">
-            <form method="post" action="{{ url_for('update') }}">
-                <button class="btn btn-secondary" type="submit">
-                    <i class="fas fa-sync-alt"></i> ¡Actualización disponible! Actualizar ahora
-                </button>
-            </form>
-        </div>
-        {% endif %}
-    </main>
+  {% block content %}{% endblock %}
+</main>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<!-- Scripts globales -->
+<script src="{{ url_for('static', filename='js/debug-console.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-components.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ajax-loader.js') }}"></script>
+<script src="{{ url_for('static', filename='js/advanced-components.js') }}"></script>
+
+<!-- Estilos adicionales -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/advanced-components.css') }}">
+
+{% block scripts %}{% endblock %}
 </body>
 </html>

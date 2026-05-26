@@ -1,459 +1,82 @@
 {% extends "base.html" %}
-
-{% block title %}Videos - Admin FTP{% endblock %}
+{% block title %}Videos - Dahua FTP{% endblock %}
 
 {% block content %}
-<div class="videos-page">
-    <div class="page-header">
-        <h1><i class="fas fa-folder-open"></i> Biblioteca de Grabaciones</h1>
-        <div class="header-actions">
-            <div class="search-box">
-                <input type="text" id="folderSearch" placeholder="Buscar carpetas..." onkeyup="filterFolders()">
-                <i class="fas fa-search"></i>
-            </div>
-            <button class="btn btn-secondary" onclick="refreshFolders()">
-                <i class="fas fa-sync-alt"></i> Actualizar
-            </button>
-        </div>
-    </div>
-
-    <!-- Estadísticas rápidas -->
-    <div class="stats-overview">
-        <div class="overview-card">
-            <div class="overview-icon">
-                <i class="fas fa-folder"></i>
-            </div>
-            <div class="overview-content">
-                <span class="overview-number">{{ folders|length }}</span>
-                <span class="overview-label">Carpetas</span>
-            </div>
-        </div>
-        <div class="overview-card">
-            <div class="overview-icon">
-                <i class="fas fa-video"></i>
-            </div>
-            <div class="overview-content">
-                <span class="overview-number">{{ folders|sum(attribute='video_count') }}</span>
-                <span class="overview-label">Videos Total</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Vista de carpetas -->
-    <div class="folders-container">
-        {% if folders %}
-            <div class="folders-grid" id="foldersGrid">
-                {% for folder in folders %}
-                <div class="folder-card" data-folder-name="{{ folder.real_name|lower }}">
-                    <div class="folder-header">
-                        <div class="folder-icon">
-                            <i class="fas fa-folder"></i>
-                            <span class="video-badge">{{ folder.video_count }}</span>
-                        </div>
-                        <div class="folder-actions">
-                            <button class="btn-icon" onclick="toggleEditAlias('{{ folder.real_name }}')" title="Editar alias">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="folder-content">
-                        <h3 class="folder-name">
-                            <a href="{{ url_for('videos_in_folder', folder=folder.real_name) }}">
-                                {{ folder.alias or folder.real_name }}
-                            </a>
-                        </h3>
-                        {% if folder.alias %}
-                            <p class="folder-real-name">{{ folder.real_name }}</p>
-                        {% endif %}
-                        <div class="folder-meta">
-                            <span class="meta-item">
-                                <i class="fas fa-play-circle"></i>
-                                {{ folder.video_count }} video{{ 's' if folder.video_count != 1 else '' }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Formulario de edición de alias -->
-                    <div class="alias-edit-form" id="edit-{{ folder.real_name }}" style="display: none;">
-                        <div class="edit-form-group">
-                            <label>Alias de la carpeta</label>
-                            <input type="text" id="input-{{ folder.real_name }}" 
-                                   value="{{ folder.alias }}" 
-                                   placeholder="Nombre descriptivo"
-                                   onkeypress="handleAliasKeyPress(event, '{{ folder.real_name }}')">
-                        </div>
-                        <div class="edit-form-actions">
-                            <button class="btn btn-primary btn-sm" onclick="saveAlias('{{ folder.real_name }}')">
-                                <i class="fas fa-save"></i> Guardar
-                            </button>
-                            <button class="btn btn-outline btn-sm" onclick="cancelEditAlias('{{ folder.real_name }}')">
-                                <i class="fas fa-times"></i> Cancelar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <i class="fas fa-folder-open"></i>
-                <h3>Sin carpetas de grabaciones</h3>
-                <p>No se encontraron carpetas con videos en el servidor</p>
-            </div>
-        {% endif %}
-    </div>
+<div class="page-header">
+  <h2 class="page-title">Videos</h2>
+  <span class="page-sub" id="video-count">Cargando…</span>
 </div>
 
-<style>
-.videos-page {
-    padding: 0;
-}
+<!-- Filtros -->
+<div class="filters-bar">
+  <select id="f-device">
+    <option value="">Todos los dispositivos</option>
+    {% for d in filters.devices %}
+    <option value="{{ d }}">{{ d }}</option>
+    {% endfor %}
+  </select>
 
-.stats-overview {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 3rem;
-}
+  <select id="f-channel">
+    <option value="">Todos los canales</option>
+    {% for c in filters.channels %}
+    <option value="{{ c }}">{{ c }}</option>
+    {% endfor %}
+  </select>
 
-.overview-card {
-    background: rgba(26, 26, 26, 0.6);
-    backdrop-filter: var(--blur-sm);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-xl);
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+  <select id="f-resolution">
+    <option value="">Todas las resoluciones</option>
+    {% for r in filters.resolutions %}
+    <option value="{{ r }}">{{ r }}</option>
+    {% endfor %}
+  </select>
 
-.overview-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--border-primary);
-    box-shadow: var(--shadow-md);
-}
+  <input type="date" id="f-date" placeholder="Fecha">
 
-.overview-icon {
-    font-size: 1.75rem;
-    color: var(--accent-secondary);
-    opacity: 0.8;
-}
+  <button class="btn-secondary" id="btn-clear">Limpiar</button>
+</div>
 
-.overview-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: block;
-    letter-spacing: -0.025em;
-}
+<!-- Grid de videos -->
+<div id="video-grid" class="video-grid">
+  <div class="loading-msg">Cargando videos…</div>
+</div>
 
-.overview-label {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    font-weight: 500;
-}
+<!-- Acciones en lote (Shift+click para seleccionar) -->
+<div class="bulk-actions" id="bulk-actions" style="display:none">
+  <span id="selected-count">0 seleccionados</span>
+  <button class="btn-danger" id="btn-delete">Eliminar seleccionados</button>
+</div>
 
-.folders-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 2rem;
-}
+<!-- ══════════════════════════════════════════════════════════════
+     Panel de reproductores - hasta 6 slots simultaneos
+     Oculto hasta que se abra el primer video.
+     ══════════════════════════════════════════════════════════════ -->
+<div id="player-panel" class="player-panel" hidden>
 
-.folder-card {
-    background: rgba(26, 26, 26, 0.6);
-    backdrop-filter: var(--blur-sm);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-xl);
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-}
+  <div class="player-panel__header">
+    <span class="player-panel__title">
+      <span class="accent">▶</span> Reproductores
+    </span>
+    <span class="player-panel__hint">Click en una card para abrir · Shift+click para seleccionar</span>
+    <button
+      class="btn-secondary player-panel__close-all"
+      onclick="for(let i=0;i<6;i++) PlayerManager.closeSlot(i)"
+    >Cerrar todos</button>
+  </div>
 
-.folder-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent-muted), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
+  <!-- Grid 3×2 de slots -->
+  <div class="player-grid">
+    <div id="player-slot-0" class="player-slot player-slot--empty"></div>
+    <div id="player-slot-1" class="player-slot player-slot--empty"></div>
+    <div id="player-slot-2" class="player-slot player-slot--empty"></div>
+    <div id="player-slot-3" class="player-slot player-slot--empty"></div>
+    <div id="player-slot-4" class="player-slot player-slot--empty"></div>
+    <div id="player-slot-5" class="player-slot player-slot--empty"></div>
+  </div>
 
-.folder-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--border-primary);
-}
+</div>
+{% endblock %}
 
-.folder-card:hover::before {
-    opacity: 1;
-}
-
-.folder-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 2rem 2rem 1rem;
-}
-
-.folder-icon {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.folder-icon i {
-    font-size: 2.5rem;
-    color: var(--accent-secondary);
-    opacity: 0.8;
-}
-
-.video-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    color: var(--bg-primary);
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-    box-shadow: var(--shadow-sm);
-}
-
-.folder-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.folder-content {
-    padding: 0 2rem 2rem;
-}
-
-.folder-name {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-
-.folder-name a {
-    color: var(--text-primary);
-    text-decoration: none;
-    transition: color 0.2s ease;
-}
-
-.folder-name a:hover {
-    color: var(--accent-secondary);
-}
-
-.folder-real-name {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin: 0 0 1rem 0;
-    font-style: italic;
-}
-
-.folder-meta {
-    display: flex;
-    gap: 1rem;
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.meta-item i {
-    color: var(--accent-muted);
-    opacity: 0.8;
-}
-
-.alias-edit-form {
-    padding: 2rem;
-    background: rgba(17, 17, 17, 0.5);
-    border-top: 1px solid var(--border-subtle);
-}
-
-.edit-form-group {
-    margin-bottom: 1.5rem;
-}
-
-.edit-form-group label {
-    display: block;
-    margin-bottom: 0.75rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.edit-form-group input {
-    width: 100%;
-    padding: 0.875rem 1.25rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-lg);
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.edit-form-group input:focus {
-    outline: none;
-    border-color: var(--accent-muted);
-    background: var(--bg-elevated);
-    box-shadow: 0 0 0 3px rgba(160, 160, 160, 0.1);
-}
-
-.edit-form-actions {
-    display: flex;
-    gap: 0.75rem;
-}
-
-@media (max-width: 768px) {
-    .header-actions {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .search-box input {
-        width: 100%;
-    }
-    
-    .stats-overview {
-        grid-template-columns: 1fr;
-    }
-    
-    .folders-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .folder-header {
-        padding: 1.5rem 1.5rem 1rem;
-    }
-    
-    .folder-content {
-        padding: 0 1.5rem 1.5rem;
-    }
-    
-    .alias-edit-form {
-        padding: 1.5rem;
-    }
-    
-    .edit-form-actions {
-        flex-direction: column;
-    }
-}
-</style>
-
-<script>
-function filterFolders() {
-    const searchTerm = document.getElementById('folderSearch').value.toLowerCase();
-    const folders = document.querySelectorAll('.folder-card');
-    
-    folders.forEach(folder => {
-        const folderName = folder.dataset.folderName;
-        const folderText = folder.textContent.toLowerCase();
-        
-        if (folderName.includes(searchTerm) || folderText.includes(searchTerm)) {
-            folder.style.display = 'block';
-        } else {
-            folder.style.display = 'none';
-        }
-    });
-}
-
-function toggleEditAlias(folder) {
-    const editForm = document.getElementById('edit-' + folder);
-    const isVisible = editForm.style.display !== 'none';
-    
-    // Ocultar todos los formularios de edición
-    document.querySelectorAll('.alias-edit-form').forEach(form => {
-        form.style.display = 'none';
-    });
-    
-    if (!isVisible) {
-        editForm.style.display = 'block';
-        document.getElementById('input-' + folder).focus();
-    }
-}
-
-function cancelEditAlias(folder) {
-    document.getElementById('edit-' + folder).style.display = 'none';
-}
-
-function handleAliasKeyPress(event, folder) {
-    if (event.key === 'Enter') {
-        saveAlias(folder);
-    } else if (event.key === 'Escape') {
-        cancelEditAlias(folder);
-    }
-}
-
-function saveAlias(folder) {
-    const input = document.getElementById('input-' + folder);
-    const alias = input.value.trim();
-    
-    // Mostrar loading
-    const saveBtn = event.target;
-    const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-    saveBtn.disabled = true;
-    
-    fetch('/set_folder_alias', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'folder=' + encodeURIComponent(folder) + '&alias=' + encodeURIComponent(alias)
-    })
-    .then(resp => resp.json())
-    .then(data => {
-        if(data.success) {
-            showNotification('Alias guardado correctamente', 'success');
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
-        } else {
-            showNotification('Error al guardar el alias', 'error');
-        }
-    })
-    .catch(error => {
-        showNotification('Error de conexión', 'error');
-    })
-    .finally(() => {
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
-    });
-}
-
-function refreshFolders() {
-    location.reload();
-}
-
-function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type}`;
-    notification.textContent = message;
-    
-    const container = document.querySelector('.main-content');
-    container.insertBefore(notification, container.firstChild);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 3000);
-}
-</script>
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/video-player.js') }}"></script>
+<script src="{{ url_for('static', filename='js/video-grid.js') }}"></script>
 {% endblock %}

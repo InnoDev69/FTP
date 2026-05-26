@@ -1,0 +1,452 @@
+/**
+ * main.css — Estilos para grid de 6 slots, players, controles
+ */
+
+:root {
+  --accent: #0f9eff;
+  --green:  #0fc067;
+  --red:    #ff3333;
+  --dark:   #0a0a0a;
+  --darker: #050505;
+  --border: #222;
+  --text:   #fff;
+  --text-muted: #999;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* GRID CARD                                                       */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.grid-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.grid-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.grid-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.grid-status span {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-control {
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-control:hover {
+  background: #1ab8ff;
+  transform: translateY(-1px);
+}
+
+.btn-control:active {
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* VIDEO GRID (3×2)                                               */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 3px;
+  background: #000;
+  aspect-ratio: 16 / 9;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* VIDEO SLOT                                                      */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.video-slot {
+  position: relative;
+  background: #111;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+}
+
+/* Estados visuales */
+.video-slot.active {
+  outline-color: var(--accent);
+  box-shadow: inset 0 0 10px rgba(15, 158, 255, 0.3);
+}
+
+.video-slot.playing {
+  outline-color: var(--green);
+}
+
+.video-slot.empty {
+  border: 1px dashed #333;
+}
+
+/* Video */
+.video-slot video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Overlay (etiqueta + botón cerrar)                              */
+/* ─────────────────────────────────────────────────────────────── */
+
+.slot-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  background: linear-gradient(transparent 60%, rgba(0, 0, 0, 0.8) 100%);
+  padding: 8px;
+  pointer-events: none;  /* El video recibe clicks */
+  font-size: 12px;
+}
+
+.slot-label {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  padding-right: 8px;
+}
+
+.slot-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  pointer-events: all;
+}
+
+.slot-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.slot-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.slot-close {
+  pointer-events: all;  /* Este botón SÍ recibe clicks */
+  background: rgba(255, 51, 51, 0.8);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.slot-close:hover {
+  background: var(--red);
+  transform: scale(1.1);
+}
+
+.slot-close:active {
+  transform: scale(0.95);
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Hint para slots vacíos                                          */
+/* ─────────────────────────────────────────────────────────────── */
+
+.slot-empty-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 16px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.video-slot.playing .slot-empty-hint {
+  display: none;
+}
+
+.video-slot.paused {
+  outline-color: #3a3a3a;
+}
+
+.video-slot.muted .slot-label::after {
+  content: " (mute)";
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* SIDEBAR DE ARCHIVOS                                             */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.sidebar-files {
+  padding: 16px;
+  background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 24px;
+}
+
+.sidebar-files h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.file-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.file-filters select,
+.file-filters button {
+  height: 34px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.file-filters button {
+  cursor: pointer;
+}
+
+.file-item {
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.file-item.is-hidden {
+  display: none;
+}
+
+.file-item:hover {
+  background: rgba(15, 158, 255, 0.1);
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+
+.file-header {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+}
+
+.file-device {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.file-channel {
+  color: var(--green);
+}
+
+.file-date {
+  margin-left: auto;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.badge.status-done {
+  background: rgba(15, 192, 103, 0.2);
+  color: var(--green);
+}
+
+.badge.status-converting,
+.badge.status-queued {
+  background: rgba(15, 158, 255, 0.2);
+  color: var(--accent);
+  animation: pulse 1s infinite;
+}
+
+.badge.status-error {
+  background: rgba(255, 51, 51, 0.2);
+  color: var(--red);
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Animaciones                                                     */
+/* ─────────────────────────────────────────────────────────────── */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* PAGE HEADER                                                     */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.page-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.page-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* EMPTY STATE                                                     */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.empty-player {
+  padding: 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+.btn-primary {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-primary:hover {
+  background: #1ab8ff;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* SCROLL                                                          */
+/* ═══════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1ab8ff;
+}

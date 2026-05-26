@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor de Grabaciones DAV</title>
+    <style>
+        /* ── Variables de tema ── */
+        :root {
+            --bg:           #0f0f0f;
+            --panel:        #1a1a1a;
+            --panel-alt:    #202020;
+            --border:       #2e2e2e;
+            --text:         #e0e0e0;
+            --text-muted:   #777;
+            --accent:       #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-dim:   rgba(37,99,235,0.15);
+            --green:        #22c55e;
+            --amber:        #f59e0b;
+            --red:          #ef4444;
+            --radius:       8px;
+            --sidebar-w:    320px;
+        }
+
+        /* ── Reset & base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100dvh;
+            display: grid;
+            grid-template-rows: 52px 1fr;
+            grid-template-columns: var(--sidebar-w) 1fr;
+            grid-template-areas:
+                "topbar topbar"
+                "sidebar main";
+            overflow: hidden;
+        }
+
+        /* ── Top bar ── */
+        #topbar {
+            grid-area: topbar;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 20px;
+        }
+        #topbar h1 {
+            font-size: .95rem;
+            font-weight: 600;
+            letter-spacing: .02em;
+            white-space: nowrap;
+        }
+        #topbar .spacer { flex: 1; }
+
+        /* Filtro de fecha */
+        #date-filter-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: .82rem;
+            color: var(--text-muted);
+        }
+        #date-filter {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: .82rem;
+            cursor: pointer;
+        }
+        #date-filter:focus { outline: none; border-color: var(--accent); }
+
+        /* Botón reproducir cola */
+        #btn-play-queue {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: .82rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background .15s;
+        }
+        #btn-play-queue:hover { background: var(--accent-hover); }
+        #btn-play-queue:disabled { opacity: .4; cursor: default; }
+
+        #queue-count {
+            background: rgba(255,255,255,.2);
+            border-radius: 10px;
+            padding: 1px 7px;
+            font-size: .76rem;
+        }
+
+        /* ── Sidebar ── */
+        #sidebar {
+            grid-area: sidebar;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #sidebar-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: .78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        #sidebar-header .stats { color: var(--text); font-size: .8rem; font-weight: 600; }
+
+        #file-list {
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+        #file-list::-webkit-scrollbar { width: 4px; }
+        #file-list::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+        /* ── Árbol de dispositivos ── */
+        .device-group { border-bottom: 1px solid var(--border); }
+
+        .device-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+            user-select: none;
+            background: var(--panel-alt);
+            transition: background .15s;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .device-header:hover { background: #252525; }
+
+        .device-chevron {
+            font-size: .7rem;
+            color: var(--text-muted);
+            transition: transform .2s;
+            flex-shrink: 0;
+        }
+        .device-group.collapsed .device-chevron { transform: rotate(-90deg); }
+        .device-group.collapsed .device-dates  { display: none; }
+
+        .device-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            flex-shrink: 0;
+        }
+        .device-alias {
+            font-size: .85rem;
+            font-weight: 600;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .device-ip {
+            font-size: .72rem;
+            color: var(--text-muted);
+            font-family: monospace;
+            flex-shrink: 0;
+        }
+        .device-count {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-radius: 10px;
+            padding: 1px 7px;
+            font-size: .72rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        /* ── Grupos de fecha ── */
+        .device-dates { padding: 0; }
+
+        .date-group { }
+
+        .date-header {
+            padding: 6px 14px 4px 20px;
+            font-size: .75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            background: var(--bg);
+            position: sticky;
+            top: 41px; /* altura del device-header */
+            z-index: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .date-header:hover { color: var(--text); }
+
+        /* ── Items de archivo ── */
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px 7px 28px;
+            cursor: pointer;
+            transition: background .12s;
+            border-left: 3px solid transparent;
+        }
+        .file-item:hover { background: var(--panel-alt); }
+        .file-item.in-queue {
+            background: var(--accent-dim);
+            border-left-color: var(--accent);
+        }
+        .file-item.playing {
+            background: rgba(34,197,94,.12);
+            border-left-color: var(--green);
+        }
+
+        .hour-badge {
+            background: var(--panel-alt);
+            color: var(--text);
+            font-family: monospace;
+            font-size: .78rem;
+            border-radius: 4px;
+            padding: 2px 7px;
+            flex-shrink: 0;
+        }
+        .file-item.in-queue .hour-badge { background: var(--accent); color: #fff; }
+        .file-item.playing  .hour-badge { background: var(--green);  color: #000; }
+
+        .ch-badge {
+            background: #2e2e40;
+            color: #a78bfa;
+            font-family: monospace;
+            font-size: .72rem;
+            border-radius: 4px;
+            padding: 2px 5px;
+            flex-shrink: 0;
+        }
+        .file-item.in-queue .ch-badge { background: rgba(255,255,255,.15); color: #c4b5fd; }
+        .file-item.playing  .ch-badge { background: rgba(0,0,0,.2);        color: #000; }
+            font-size: .78rem;
+            color: var(--text-muted);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-size {
+            font-size: .72rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            font-family: monospace;
+        }
+
+        /* Botón playlist del día */
+        .day-play-btn {
+            margin-left: auto;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: none;
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: .7rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .day-play-btn:hover { background: var(--accent); color: #fff; }
+
+        /* ── Panel principal ── */
+        #main {
+            grid-area: main;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .player-card {
+            background: var(--panel);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .player-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: .82rem;
+        }
+        .player-card-header .label { font-weight: 600; }
+        .player-card-header .current-name {
+            color: var(--text-muted);
+            font-family: monospace;
+            font-size: .78rem;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-card-header .device-badge {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: .72rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        video {
+            width: 100%;
+            max-height: 58vh;
+            display: block;
+            background: #000;
+        }
+
+        /* ── Cola de reproducción ── */
+        .queue-card {
+            background: var(--panel);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .queue-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: .82rem;
+            font-weight: 600;
+        }
+        .queue-card-header .spacer { flex: 1; }
+        #btn-clear-queue {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 5px;
+            padding: 3px 10px;
+            font-size: .76rem;
+            cursor: pointer;
+        }
+        #btn-clear-queue:hover { border-color: var(--red); color: var(--red); }
+
+        #queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: .78rem;
+            background: var(--panel-alt);
+        }
+        .queue-item.playing-now {
+            background: rgba(34,197,94,.12);
+            color: var(--green);
+        }
+        .queue-item .qi-device { font-size: .7rem; color: var(--text-muted); flex: 1; }
+        .queue-item .qi-remove {
+            background: none; border: none; color: var(--text-muted);
+            cursor: pointer; font-size: .9rem; padding: 0 4px;
+        }
+        .queue-item .qi-remove:hover { color: var(--red); }
+
+        /* ── Estado vacío / loading ── */
+        .empty-state {
+            padding: 32px 16px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: .85rem;
+        }
+
+        /* ── Loader ── */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .6s linear infinite;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ─── Top bar ─── -->
+<header id="topbar">
+    <h1>Visor DAV</h1>
+    <div class="spacer"></div>
+    <div id="date-filter-wrap">
+        <span>Fecha:</span>
+        <select id="date-filter">
+            <option value="">Todas</option>
+        </select>
+    </div>
+    <button id="btn-play-queue" disabled>
+        Play Queue <span id="queue-count">0</span>
+    </button>
+</header>
+
+<!-- ─── Sidebar ─── -->
+<aside id="sidebar">
+    <div id="sidebar-header">
+        <span>Dispositivos</span>
+        <span class="stats" id="sidebar-stats">-</span>
+    </div>
+    <div id="file-list">
+        <div class="empty-state"><span class="loader"></span><br><br>Cargando grabaciones…</div>
+    </div>
+</aside>
+
+<!-- ─── Main ─── -->
+<main id="main">
+    <div class="player-card">
+        <div class="player-card-header">
+            <span class="label">Reproductor</span>
+            <span class="current-name" id="current-name">Sin archivo</span>
+            <span class="device-badge" id="current-device">-</span>
+        </div>
+        <video id="player" controls preload="auto"></video>
+    </div>
+
+    <div class="queue-card">
+        <div class="queue-card-header">
+            Cola de reproducción
+            <span class="spacer"></span>
+            <button id="btn-clear-queue">Limpiar</button>
+        </div>
+        <div id="queue-list">
+            <div class="empty-state" id="queue-empty">
+                Agregá archivos desde el panel lateral
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Estado global
+// ─────────────────────────────────────────────────────────────────────────────
+let allDevices  = {};   // { ip: { alias, files, ... } }
+let allFiles    = [];   // lista plana de todos los archivos
+
+let queue       = [];   // [file, file, ...]
+let queueIndex  = -1;   // índice en queue del que se está reproduciendo
+
+let dateFilter  = "";   // "" = todas las fechas
+
+const player    = document.getElementById("player");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function fmtSize(bytes) {
+    if (!bytes) return "?";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    if (bytes < 1024 ** 3)   return (bytes / 1024 ** 2).toFixed(1) + " MB";
+    return (bytes / 1024 ** 3).toFixed(2) + " GB";
+}
+
+function safeId(ip) { return ip.replace(/\./g, "_"); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Carga inicial
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadFiles() {
+    try {
+        const r       = await fetch("/api/devices");
+        allDevices    = await r.json();
+        allFiles      = [];
+
+        for (const dev of Object.values(allDevices)) {
+            for (const f of dev.files) allFiles.push(f);
+        }
+
+        renderDateFilter();
+        renderDeviceTree();
+        updateStats();
+    } catch (err) {
+        document.getElementById("file-list").innerHTML =
+            `<div class="empty-state" style="color:#ef4444">Error cargando grabaciones.<br><small>${err.message}</small></div>`;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Selector de fecha
+// ─────────────────────────────────────────────────────────────────────────────
+function renderDateFilter() {
+    const dates = [...new Set(allFiles.map(f => f.date).filter(Boolean))].sort();
+    const sel   = document.getElementById("date-filter");
+    sel.innerHTML = '<option value="">Todas las fechas</option>';
+    dates.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        sel.appendChild(opt);
+    });
+}
+
+document.getElementById("date-filter").addEventListener("change", e => {
+    dateFilter = e.target.value;
+    renderDeviceTree();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Árbol de dispositivos
+// ─────────────────────────────────────────────────────────────────────────────
+function renderDeviceTree() {
+    const el = document.getElementById("file-list");
+    let html = "";
+
+    for (const [ip, dev] of Object.entries(allDevices)) {
+        // Agrupar archivos por fecha
+        const byDate = {};
+        for (const f of dev.files) {
+            if (dateFilter && f.date !== dateFilter) continue;
+            const d = f.date || "Sin fecha";
+            (byDate[d] = byDate[d] || []).push(f);
+        }
+
+        const totalVisible = Object.values(byDate).reduce((s, a) => s + a.length, 0);
+        if (dateFilter && totalVisible === 0) continue; // ocultar dispositivo sin archivos ese día
+
+        const sid = safeId(ip);
+        html += `
+        <div class="device-group" id="dg-${sid}">
+          <div class="device-header" onclick="toggleDevice('${sid}')">
+            <span class="device-chevron">v</span>
+            <span class="device-dot"></span>
+            <span class="device-alias">${dev.alias}</span>
+            <span class="device-ip">${ip}</span>
+            <span class="device-count">${totalVisible}</span>
+          </div>
+          <div class="device-dates" id="dd-${sid}">`;
+
+        for (const [date, files] of Object.entries(byDate).sort()) {
+            const sorted = files.slice().sort((a, b) => (a.hour ?? 0) - (b.hour ?? 0));
+            html += `
+            <div class="date-group">
+              <div class="date-header" onclick="playDayQueue('${ip}','${date}')">
+                ${date}
+                <button class="day-play-btn" title="Reproducir todo el dia">Play</button>
+              </div>`;
+
+            for (const f of sorted) {
+                const inQ     = queue.some(q => q.path === f.path);
+                const playing = queueIndex >= 0 && queue[queueIndex]?.path === f.path;
+                const cls     = playing ? "playing" : inQ ? "in-queue" : "";
+                const chLabel = f.channel ? `<span class="ch-badge">${f.channel}</span>` : "";
+                html += `
+              <div class="file-item ${cls}" id="fi-${btoa(f.path).replace(/=/g,'')}"
+                   onclick="toggleQueue(event,'${escJS(f.path)}','${escJS(f.name)}','${escJS(ip)}','${escJS(dev.alias)}')">
+                <span class="hour-badge">${f.hour_label ?? "--:--"}</span>
+                ${chLabel}
+                <span class="file-name">${escHTML(f.name)}</span>
+                <span class="file-size">${fmtSize(f.size)}</span>
+              </div>`;
+            }
+            html += `</div>`; // .date-group
+        }
+        html += `</div></div>`; // .device-dates .device-group
+    }
+
+    el.innerHTML = html || '<div class="empty-state">Sin dispositivos o sin archivos para la fecha seleccionada.</div>';
+}
+
+function escJS(s)   { return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+function escHTML(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toggle dispositivo (colapsar/expandir)
+// ─────────────────────────────────────────────────────────────────────────────
+function toggleDevice(sid) {
+    document.getElementById(`dg-${sid}`)?.classList.toggle("collapsed");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cola de reproducción
+// ─────────────────────────────────────────────────────────────────────────────
+function toggleQueue(evt, path, name, ip, alias) {
+    evt.stopPropagation();
+    const idx = queue.findIndex(f => f.path === path);
+    if (idx === -1) {
+        const f = allFiles.find(f => f.path === path);
+        if (f) {
+            queue.push(f);
+        } else {
+            queue.push({ path, name, device_ip: ip, device_alias: alias });
+        }
+    } else {
+        // Si es el que está sonando no lo removemos desde aquí
+        if (idx === queueIndex) return;
+        queue.splice(idx, 1);
+        if (queueIndex > idx) queueIndex--;
+    }
+    updateQueue();
+    renderDeviceTree();
+}
+
+function playDayQueue(ip, date) {
+    // Reemplaza la cola con todos los archivos de ese día/dispositivo, ordenados
+    const files = (allDevices[ip]?.files ?? [])
+        .filter(f => f.date === date)
+        .sort((a, b) => (a.hour ?? 0) - (b.hour ?? 0));
+
+    if (!files.length) return;
+    queue      = files;
+    queueIndex = -1;
+    updateQueue();
+    playNext();
+    renderDeviceTree();
+}
+
+function updateQueue() {
+    const btnPlay  = document.getElementById("btn-play-queue");
+    const countEl  = document.getElementById("queue-count");
+    const listEl   = document.getElementById("queue-list");
+    const emptyEl  = document.getElementById("queue-empty");
+
+    countEl.textContent = queue.length;
+    btnPlay.disabled    = queue.length === 0;
+
+    if (queue.length === 0) {
+        listEl.innerHTML = '<div class="empty-state" id="queue-empty">Agregá archivos desde el panel lateral</div>';
+        return;
+    }
+
+    listEl.innerHTML = queue.map((f, i) => `
+        <div class="queue-item ${i === queueIndex ? 'playing-now' : ''}">
+            ${i === queueIndex ? "playing" : `<span style="color:var(--text-muted);min-width:14px">${i + 1}</span>`}
+            <span>${f.hour_label ?? "--:--"} ${escHTML(f.name)}</span>
+            <span class="qi-device">${escHTML(f.device_alias ?? f.device_ip ?? "")}</span>
+            <button class="qi-remove" onclick="removeFromQueue(${i})" title="Quitar">x</button>
+        </div>
+    `).join("");
+}
+
+function removeFromQueue(i) {
+    if (i === queueIndex) return; // no remover el actual
+    queue.splice(i, 1);
+    if (queueIndex > i) queueIndex--;
+    updateQueue();
+    renderDeviceTree();
+}
+
+document.getElementById("btn-clear-queue").addEventListener("click", () => {
+    queue      = [];
+    queueIndex = -1;
+    updateQueue();
+    renderDeviceTree();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reproducción
+// ─────────────────────────────────────────────────────────────────────────────
+function playNext() {
+    if (queue.length === 0) return;
+    queueIndex = queueIndex < queue.length - 1 ? queueIndex + 1 : 0;
+    playFile(queue[queueIndex]);
+}
+
+function playFile(f) {
+    player.src = `/stream/${encodeURIComponent(f.path).replace(/%2F/g, "/")}`;
+    player.play().catch(() => {});
+    document.getElementById("current-name").textContent   = f.name;
+    document.getElementById("current-device").textContent = f.device_alias ?? f.device_ip ?? "-";
+    updateQueue();
+    renderDeviceTree();
+}
+
+// Botón "Reproducir cola"
+document.getElementById("btn-play-queue").addEventListener("click", () => {
+    queueIndex = -1;
+    playNext();
+});
+
+// Continuidad automática
+player.addEventListener("ended", () => {
+    if (queueIndex < queue.length - 1) {
+        queueIndex++;
+        playFile(queue[queueIndex]);
+    }
+});
+
+player.addEventListener("error", () => {
+    const f = queue[queueIndex];
+    if (f) {
+        document.getElementById("current-name").innerHTML =
+            `<span style="color:var(--red)">Error: ${escHTML(f.name)}</span>`;
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stats sidebar
+// ─────────────────────────────────────────────────────────────────────────────
+function updateStats() {
+    const devCount = Object.keys(allDevices).length;
+    const total    = allFiles.length;
+    document.getElementById("sidebar-stats").textContent =
+        `${devCount} disp · ${total} arch`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Arranque
+// ─────────────────────────────────────────────────────────────────────────────
+window.addEventListener("load", loadFiles);
+</script>
+</body>
+</html>
