@@ -312,6 +312,10 @@ def _scan_devices() -> dict:
 
             rel  = f.relative_to(base).as_posix()
             meta = _parse_filename_datetime(f.name) or {}
+            if "channel" not in meta:
+                ch_match = re.search(r"_ch(\d+)_", f.name)
+                if ch_match:
+                    meta["channel"] = f"ch{ch_match.group(1)}"
 
             files.append({
                 "name":            f.name,
@@ -684,7 +688,13 @@ def player():
 
     for device in devices_data.values():
         for f in device.get("files", []):
-            channel = f.get("channel") or f.get("channel_id") or "1"
+            channel = f.get("channel")
+            if not channel:
+                name = f.get("name") or ""
+                ch_match = re.search(r"_ch(\d+)_", name)
+                if ch_match:
+                    channel = f"ch{ch_match.group(1)}"
+            channel = channel or "ch1"
             videos.append({
                 "id":              len(videos),
                 "filename":        f.get("name"),
