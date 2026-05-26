@@ -15,6 +15,20 @@ const ACCENT_COLOR = '#0f9eff';  // Azul
 const GREEN_COLOR  = '#0fc067';  // Verde
 
 /**
+ * Parsea un valor de data-recording-ts que puede ser Unix timestamp o ISO string.
+ * Centralizado para evitar duplicación y bugs de timezone.
+ */
+function parseRecordingTs(raw) {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const numeric = parseFloat(trimmed);
+  const date = (!Number.isNaN(numeric) && /^\d+(\.\d+)?$/.test(trimmed))
+    ? new Date(numeric * 1000)
+    : new Date(trimmed);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+/**
  * Seleccionar qué slot va a recibir el próximo archivo
  */
 function activateSlot(i) {
@@ -252,7 +266,6 @@ function muteAll() {
  * Inicialización
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // Activar el primer slot por defecto
   activateSlot(0);
   initSidebarFilters();
   initSidebarToggle();
@@ -263,23 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
 function formatRecordingDates() {
   const elements = document.querySelectorAll('.file-date[data-recording-ts]');
   elements.forEach(el => {
-    const raw = el.dataset.recordingTs;
-    if (!raw) {
+    const date = parseRecordingTs(el.dataset.recordingTs);
+    if (!date) {
       el.textContent = '';
       return;
     }
-
-    // Intentar como Unix timestamp numérico primero
-    const numeric = parseFloat(raw);
-    const date = (!Number.isNaN(numeric) && /^\d+(\.\d+)?$/.test(raw.trim()))
-      ? new Date(numeric * 1000)   // Unix timestamp
-      : new Date(raw);             // ISO string
-
-    if (isNaN(date.getTime())) {
-      el.textContent = '';
-      return;
-    }
-
     const year   = date.getFullYear();
     const month  = String(date.getMonth() + 1).padStart(2, '0');
     const day    = String(date.getDate()).padStart(2, '0');
@@ -351,7 +352,6 @@ function initSidebarFilters() {
     const deviceId = item.dataset.deviceId || '';
     const deviceAlias = item.dataset.deviceAlias || '';
     const channelId = item.dataset.channelId || '';
-    const tsRaw = item.dataset.recordingTs || '';
 
     if (deviceId) {
       const label = deviceAlias && deviceAlias !== deviceId
@@ -361,11 +361,12 @@ function initSidebarFilters() {
     }
     if (channelId) channels.add(channelId);
 
-    const ts = parseFloat(tsRaw);
-    if (!Number.isNaN(ts) && ts > 0) {
-      const d = new Date(ts * 1000);
-      const day = d.toISOString().slice(0, 10);
-      const hour = String(d.getHours()).padStart(2, '0');
+    const d = parseRecordingTs(item.dataset.recordingTs);
+    if (d) {
+      const year  = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day   = `${year}-${month}-${String(d.getDate()).padStart(2, '0')}`;
+      const hour  = String(d.getHours()).padStart(2, '0');
       item.dataset.day = day;
       item.dataset.hour = hour;
       days.add(day);
@@ -374,7 +375,7 @@ function initSidebarFilters() {
   });
 
   fillSelectMap(deviceSel, devices);
-  fillSelect(channelSel, channels, (v) => `ch${v}`);
+  fillSelect(channelSel, channels, (v) => `${v}`);
   fillSelect(daySel, days, (v) => v, true);
   fillSelect(hourSel, hours, (v) => `${v}:00`, true);
 
@@ -385,12 +386,11 @@ function initSidebarFilters() {
     const hourVal = hourSel.value;
 
     items.forEach(item => {
-      const matchDevice = !deviceVal || item.dataset.deviceId === deviceVal;
+      const matchDevice  = !deviceVal  || item.dataset.deviceId  === deviceVal;
       const matchChannel = !channelVal || item.dataset.channelId === channelVal;
-      const matchDay = !dayVal || item.dataset.day === dayVal;
-      const matchHour = !hourVal || item.dataset.hour === hourVal;
-      const visible = matchDevice && matchChannel && matchDay && matchHour;
-      item.classList.toggle('is-hidden', !visible);
+      const matchDay     = !dayVal     || item.dataset.day       === dayVal;
+      const matchHour    = !hourVal    || item.dataset.hour      === hourVal;
+      item.classList.toggle('is-hidden', !(matchDevice && matchChannel && matchDay && matchHour));
     });
   };
 
@@ -410,10 +410,7 @@ function initSidebarFilters() {
 
 function fillSelect(selectEl, values, labelFn, sortAsc = false) {
   const sorted = Array.from(values);
-  sorted.sort((a, b) => {
-    if (sortAsc) return String(a).localeCompare(String(b));
-    return String(a).localeCompare(String(b));
-  });
+  sorted.sort((a, b) => String(a).localeCompare(String(b)));
 
   sorted.forEach(val => {
     const opt = document.createElement('option');
