@@ -107,11 +107,8 @@ class FTPAuthorizer:
     eliminando conflictos de nombres de archivo entre DVRs.
     """
 
-    # Permisos necesarios para que los DVRs Dahua puedan subir grabaciones
-    # e = CWD, l = LIST, r = RETR, a = APPE, d = DELE, f = RNFR/RNTO
-    # m = MKD (Dahua crea subdirectorios por fecha/canal), w = STOR, T = MFMT
     PERMS_READ  = "elradf"
-    PERMS_WRITE = "elradfmwT"   # Sin M (CHMOD) — innecesario para DVRs
+    PERMS_WRITE = "elradfmwT"
 
     def __init__(self, args: argparse.Namespace):
         self._args        = args
@@ -121,7 +118,6 @@ class FTPAuthorizer:
         self._setup()
 
     def _user_home(self, username: str) -> str:
-        """Retorna el directorio home para un usuario, creándolo si no existe."""
         if self._args.per_user_home:
             home = self._root / username
         else:
@@ -183,9 +179,12 @@ class FTPAuthorizer:
 class LargeFilesDTPHandler(ThrottledDTPHandler):
     """
     Handler de canal de datos optimizado para archivos grandes de DVR.
-    use_sendfile como atributo de clase bool (compatible con pyftpdlib 1.5.9).
+    use_sendfile debe ser un método callable (pyftpdlib 2.2.0 lo invoca
+    como dc.use_sendfile() en get_repr_info — si es un bool estático
+    lanza TypeError: 'bool' object is not callable).
     """
-    def use_sendfile(self):
+
+    def use_sendfile(self) -> bool:
         return False
 
 
@@ -239,22 +238,6 @@ class CustomFTPHandler(FTPHandler):
             f"[INCOMPLETE RECV]  {self.username!r} | {file}"
         )
 
-    def get_repr_info(self, as_str=False, extra_info=None):
-        try:
-            return super().get_repr_info(as_str=as_str, extra_info=extra_info)
-        except TypeError:
-            info = {
-                "id": id(self),
-                "addr": f"{self.remote_ip}:{self.remote_port}",
-            }
-            if self.username:
-                info["user"] = self.username
-            if extra_info:
-                info.update(extra_info)
-            if as_str:
-                return ", ".join([f"{k}={v!r}" for (k, v) in info.items()])
-            return info
-
 
 # ──────────────────────────────────────────────────────────────
 # CONFIGURACIÓN CENTRALIZADA
@@ -284,14 +267,23 @@ class FTPServerConfig:
 
     def apply_to_handler(self, handler: type[CustomFTPHandler], authorizer: DummyAuthorizer):
         """Aplica toda la configuración al handler class (atributos de clase)."""
+
+        # ── DTP handler (canal de datos) ──────────────────────────────────
+        # IMPORTANTE: sin esta línea pyftpdlib usa el DTPHandler base, que
+        # tiene use_sendfile=False como bool → TypeError en pyftpdlib 2.2.0
+        LargeFilesDTPHandler.read_limit        = self._args.read_limit
+        LargeFilesDTPHandler.write_limit       = self._args.write_limit
+        LargeFilesDTPHandler.ac_in_buffer_size  = self._args.buffer_size
+        LargeFilesDTPHandler.ac_out_buffer_size = self._args.buffer_size
+        handler.dtp_handler = LargeFilesDTPHandler
+
+        # ── Control handler ───────────────────────────────────────────────
         handler.authorizer         = authorizer
         handler.passive_ports      = self._parse_passive_ports()
         handler.timeout            = self._args.timeout
         handler.max_cons           = self._args.max_connections
         handler.max_cons_per_ip    = self._args.max_connections_per_ip
         handler.banner             = "Servidor FTP Dahua listo."
-
-        # Permitir reanudar transferencias interrumpidas (importante para archivos grandes)
         handler.permit_foreign_addresses = False
 
         if self._args.masquerade_address:
