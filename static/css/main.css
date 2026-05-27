@@ -35,6 +35,66 @@ body {
   padding: 0;
 }
 
+.login-body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.login-wrap {
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-card {
+  background: linear-gradient(135deg, rgba(18, 28, 45, 0.98), rgba(10, 16, 28, 0.98));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 26px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-logo {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.12);
+  padding: 6px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.login-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.login-subtitle {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.login-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #fecaca;
+  font-size: 12px;
+}
+
+.btn-full {
+  width: 100%;
+}
+
 .main-content {
   max-width: 1260px;
   margin: 0 auto;

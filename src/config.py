@@ -41,6 +41,14 @@ class ConfigManager:
                 "debug": True,
                 "max_upload_gb": 4,
             },
+            "auth": {
+                "users": [
+                    { "username": "admin", "password": "1234" }
+                ]
+            },
+            "security": {
+                "max_login_attempts": 5
+            }
         }
 
     def load_config(self):

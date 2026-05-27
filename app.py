@@ -16,14 +16,17 @@ import threading
 import tempfile
 import hashlib
 import time
+import hmac
 from datetime import datetime
 from pathlib import Path
 from flask import (
     Flask, render_template, request, Response,
-    jsonify, abort, redirect, url_for, flash
+    jsonify, abort, redirect, url_for, flash, session
 )
+from werkzeug.security import check_password_hash
 from src import logger_instance, config_instance
 from routes import all_blueprints
+from src import login_required
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN — cargada desde config.json
@@ -38,6 +41,11 @@ app.secret_key = (
     or "dev-secret"
 )
 app.config["MAX_CONTENT_LENGTH"] = config_instance.get("server.max_upload_gb", 4) * 1024 ** 3
+
+
+@app.context_processor
+def _inject_user_context():
+    return {"username": session.get("username")}
 
 for bp in all_blueprints:
     app.register_blueprint(bp)
@@ -401,6 +409,56 @@ def start_cleanup_scheduler(interval_minutes: int = 60, days: int = 7) -> None:
     _cleanup_thread.start()
 
 
+_login_attempts: dict[str, list[float]] = {}
+
+
+def _get_client_ip() -> str:
+    fwd = request.headers.get("X-Forwarded-For", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
+def _get_auth_users() -> list[dict]:
+    users = config_instance.get("auth.users", [])
+    return users if isinstance(users, list) else []
+
+
+def _find_auth_user(username: str) -> dict | None:
+    for user in _get_auth_users():
+        if user.get("username") == username:
+            return user
+    return None
+
+
+def _verify_password(user: dict, password: str) -> bool:
+    password_hash = user.get("password_hash")
+    if password_hash:
+        return check_password_hash(password_hash, password)
+    stored = user.get("password", "")
+    return hmac.compare_digest(stored, password)
+
+
+def _record_failed_attempt(ip: str) -> None:
+    now = time.time()
+    attempts = _login_attempts.setdefault(ip, [])
+    attempts.append(now)
+    cutoff = now - 900
+    _login_attempts[ip] = [t for t in attempts if t > cutoff]
+
+
+def _is_blocked(ip: str) -> bool:
+    max_attempts = int(config_instance.get("security.max_login_attempts", 5))
+    now = time.time()
+    cutoff = now - 900
+    recent = [t for t in _login_attempts.get(ip, []) if t > cutoff]
+    return len(recent) >= max_attempts
+
+
+def _clear_attempts(ip: str) -> None:
+    _login_attempts.pop(ip, None)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # HTTP Range Request support
 # ─────────────────────────────────────────────────────────────────────────────
@@ -466,6 +524,7 @@ def stream_file_with_ranges(file_path: str, mimetype: str = "video/mp4") -> Resp
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/upload", methods=["POST"])
+@login_required
 def upload():
     """Recibe un .dav (o cualquier video) y lo guarda en disco."""
     if "file" not in request.files:
@@ -496,6 +555,7 @@ def upload():
 
 
 @app.route("/stream/<path:filepath>")
+@login_required
 def stream_video(filepath):
     """
     Stream del video convertido a MP4.
@@ -550,6 +610,7 @@ def stream_video(filepath):
 
 
 @app.route("/download/<path:filepath>")
+@login_required
 def download_mp4(filepath):
     """Descarga directa del MP4 convertido."""
     dav_path = os.path.join(_VIDEOS_DIR, filepath)
@@ -582,6 +643,7 @@ def download_mp4(filepath):
 
 
 @app.route("/status/<path:filepath>")
+@login_required
 def file_status(filepath):
     """Info del archivo: codec, resolución, duración, FPS."""
     dav_path = os.path.join(_VIDEOS_DIR, filepath)
@@ -619,6 +681,7 @@ def file_status(filepath):
 
 
 @app.route("/files")
+@login_required
 def list_files():
     """
     Lista archivos planos en el directorio raíz de videos (compatibilidad).
@@ -642,6 +705,7 @@ def list_files():
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/devices")
+@login_required
 def api_devices():
     """
     Lista todos los dispositivos con sus archivos y metadatos de fecha/hora.
@@ -651,6 +715,7 @@ def api_devices():
 
 
 @app.route("/api/files/by-date")
+@login_required
 def api_files_by_date():
     """
     Retorna archivos de todos los dispositivos agrupados por fecha.
@@ -679,6 +744,7 @@ def api_files_by_date():
 
 
 @app.route("/api/playlist/day")
+@login_required
 def api_playlist_day():
     """
     Genera una playlist M3U8 para todas las horas de un dispositivo en un día.
@@ -728,6 +794,7 @@ def api_playlist_day():
 
 
 @app.route("/api/config")
+@login_required
 def api_config():
     """Expone la configuración pública (sin datos sensibles) al frontend."""
     return jsonify({
@@ -739,7 +806,81 @@ def api_config():
     })
 
 
+@app.post("/api/login")
+def api_login():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    if not username or not password:
+        return jsonify({"ok": False, "error": "Credenciales incompletas"}), 400
+
+    if not _get_auth_users():
+        return jsonify({"ok": False, "error": "Sin usuarios configurados"}), 503
+
+    ip = _get_client_ip()
+    if _is_blocked(ip):
+        return jsonify({"ok": False, "error": "Demasiados intentos"}), 429
+
+    user = _find_auth_user(username)
+    if not user or not _verify_password(user, password):
+        _record_failed_attempt(ip)
+        return jsonify({"ok": False, "error": "Usuario o contraseña inválidos"}), 401
+
+    _clear_attempts(ip)
+    session["logged_in"] = True
+    session["username"] = username
+
+    return jsonify({"ok": True, "user": {"username": username}})
+
+
+@app.post("/api/logout")
+def api_logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html")
+
+    if request.is_json:
+        return api_login()
+
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+
+    if not username or not password:
+        return render_template("login.html", error="Credenciales incompletas"), 400
+
+    if not _get_auth_users():
+        return render_template("login.html", error="Sin usuarios configurados"), 503
+
+    ip = _get_client_ip()
+    if _is_blocked(ip):
+        return render_template("login.html", error="Demasiados intentos"), 429
+
+    user = _find_auth_user(username)
+    if not user or not _verify_password(user, password):
+        _record_failed_attempt(ip)
+        return render_template("login.html", error="Usuario o contraseña inválidos"), 401
+
+    _clear_attempts(ip)
+    session["logged_in"] = True
+    session["username"] = username
+
+    return redirect(url_for("main.dashboard"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/player")
+@login_required
 def player():
     """
     Renderiza la página del reproductor con lista de videos disponibles.
@@ -781,6 +922,7 @@ def player():
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/config/current")
+@login_required
 def api_config_current():
     """
     Retorna la configuración actual completa.
@@ -798,6 +940,7 @@ def api_config_current():
 
 
 @app.route("/api/config/update", methods=["POST"])
+@login_required
 def api_config_update():
     """
     Actualiza valores de configuración.
@@ -836,6 +979,7 @@ def api_config_update():
 
 
 @app.route("/api/video-check/<path:filepath>")
+@login_required
 def check_video(filepath):
     """
     Verifica que un archivo existe y es accesible.
@@ -864,6 +1008,7 @@ def check_video(filepath):
 
 
 @app.route("/settings")
+@login_required
 def settings_page():
     """
     Renderiza la página de configuración con formularios AJAX.
@@ -878,6 +1023,7 @@ def settings_page():
 
 
 @app.post("/settings/update/<section>")
+@login_required
 def settings_update(section):
     """
     Actualiza secciones de configuración desde formularios HTML.
@@ -916,6 +1062,7 @@ def settings_update(section):
 
 
 @app.post("/settings/device-alias")
+@login_required
 def settings_device_alias():
     """
     Actualiza el alias de un dispositivo desde settings.
