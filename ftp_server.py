@@ -281,14 +281,6 @@ class FTPServerConfig:
         if self._args.masquerade_address:
             handler.masquerade_address = self._args.masquerade_address
 
-        # Configurar DTP
-        dtp = LargeFilesDTPHandler
-        dtp.ac_in_buffer_size  = self._args.buffer_size
-        dtp.ac_out_buffer_size = self._args.buffer_size
-        dtp.read_limit         = self._args.read_limit
-        dtp.write_limit        = self._args.write_limit
-        handler.dtp_handler    = dtp
-
 
 # ──────────────────────────────────────────────────────────────
 # LOGGER
