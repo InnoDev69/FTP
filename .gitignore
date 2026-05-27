@@ -54,3 +54,6 @@ __pycache__/
 
 *.dav
 *.mp4
+
+# Proyect
+config.json

@@ -41,6 +41,10 @@ class ConfigManager:
                 "debug": True,
                 "max_upload_gb": 4,
             },
+            "app": {
+                "version": "1.0.0",
+                "update_manifest_url": "",
+            },
             "auth": {
                 "users": [
                     { "username": "admin", "password": "1234" }

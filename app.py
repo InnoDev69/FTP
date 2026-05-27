@@ -806,6 +806,14 @@ def api_config():
     })
 
 
+@app.route("/api/version")
+def api_version():
+    return jsonify({
+        "version": config_instance.get("app.version", "0.0.0"),
+        "update_manifest_url": config_instance.get("app.update_manifest_url", ""),
+    })
+
+
 @app.post("/api/login")
 def api_login():
     data = request.get_json(silent=True) or {}
