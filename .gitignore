@@ -57,3 +57,5 @@ __pycache__/
 
 # Proyect
 config.json
+*.json
+*.example.json

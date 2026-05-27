@@ -185,7 +185,8 @@ class LargeFilesDTPHandler(ThrottledDTPHandler):
     Handler de canal de datos optimizado para archivos grandes de DVR.
     use_sendfile como atributo de clase bool (compatible con pyftpdlib 1.5.9).
     """
-    use_sendfile = False
+    def use_sendfile(self):
+        return False
 
 
 # ──────────────────────────────────────────────────────────────
