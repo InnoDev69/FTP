@@ -22,7 +22,7 @@ class Logger:
         self.log_dir.mkdir(exist_ok=True)
         self._initialized = True
     
-    def get_logger(self, name):
+    def get_logger(self, name="None"):
         """Get or create a logger with the specified name."""
         if name in self._loggers:
             return self._loggers[name]
@@ -53,23 +53,23 @@ class Logger:
         self._loggers[name] = logger
         return logger
     
-    def debug(self, name, message):
+    def debug(self, name="None", message=None):
         """Log debug message."""
         self.get_logger(name).debug(message)
     
-    def info(self, name, message):
+    def info(self, name="None", message=None):
         """Log info message."""
         self.get_logger(name).info(message)
     
-    def warning(self, name, message):
+    def warning(self, name="None", message=None):
         """Log warning message."""
         self.get_logger(name).warning(message)
     
-    def error(self, name, message):
+    def error(self, name="None", message=None):
         """Log error message."""
         self.get_logger(name).error(message)
     
-    def critical(self, name, message):
+    def critical(self, name="None", message=None):
         """Log critical message."""
         self.get_logger(name).critical(message)
 
