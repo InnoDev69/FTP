@@ -239,6 +239,22 @@ class CustomFTPHandler(FTPHandler):
             f"[INCOMPLETE RECV]  {self.username!r} | {file}"
         )
 
+    def get_repr_info(self, as_str=False, extra_info=None):
+        try:
+            return super().get_repr_info(as_str=as_str, extra_info=extra_info)
+        except TypeError:
+            info = {
+                "id": id(self),
+                "addr": f"{self.remote_ip}:{self.remote_port}",
+            }
+            if self.username:
+                info["user"] = self.username
+            if extra_info:
+                info.update(extra_info)
+            if as_str:
+                return ", ".join([f"{k}={v!r}" for (k, v) in info.items()])
+            return info
+
 
 # ──────────────────────────────────────────────────────────────
 # CONFIGURACIÓN CENTRALIZADA
