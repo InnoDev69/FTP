@@ -1,4 +1,4 @@
-from flask import redirect, request, session, url_for
+from flask import redirect, session, url_for
 import contextlib
 
 def login_required(func):

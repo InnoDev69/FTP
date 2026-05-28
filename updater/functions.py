@@ -2,7 +2,6 @@ from datetime import datetime
 from src.constants import CHANGELOG_FILE
 import subprocess
 import json
-from flask import flash
 import os
 
 def check_git_update():

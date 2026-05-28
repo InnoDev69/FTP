@@ -27,8 +27,8 @@ from werkzeug.security import check_password_hash
 from src import logger_instance, config_instance
 from routes import all_blueprints
 from src import login_required
+from src import _scan_devices
 from src import VIDEOS_DIR, CACHE_DIR, ALLOWED
-from src.scanner import _scan_devices
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN — cargada desde config.json
