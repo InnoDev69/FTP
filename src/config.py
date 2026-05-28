@@ -1,5 +1,6 @@
 import json
 from .logger import logger_instance
+from .constants import CONFIG_FILE
 
 class ConfigManager:
     def __init__(self, config_file):
@@ -113,3 +114,5 @@ class ConfigManager:
                 json.dump(self.config_data, f, indent=2)
         except Exception as e:
             logger_instance.error(f"Error al guardar la configuración: {e}")
+        
+config_instance = ConfigManager(CONFIG_FILE)

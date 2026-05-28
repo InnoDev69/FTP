@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
+from src.auth_utils import login_required
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
+@login_required
 def dashboard():
     stats = {
         "total": 0,

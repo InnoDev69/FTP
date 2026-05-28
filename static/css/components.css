@@ -426,3 +426,28 @@
 .p-4 { padding: 16px; }
 .text-center { text-align: center; }
 .text-muted { color: var(--text-muted); }
+
+
+.update-badge {
+    background-color: #EF4444; /* Rojo de alerta estilo Tailwind */
+    color: #FFFFFF;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 0.15em 0.45em;
+    border-radius: 50px; /* Forma redonda/píldora */
+    
+    /* Posicionamiento en la esquina */
+    position: absolute;
+    top: -5px;
+    right: -15px;
+    
+    /* Pequeña animación de parpadeo (opcional) */
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}

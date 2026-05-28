@@ -2,7 +2,7 @@ from .config import ConfigManager
 from .logger import logger_instance
 from .auth_utils import login_required
 from .constants import *
+from .globals import *
 
-config_instance = ConfigManager(CONFIG_FILE)
-
-__all__ = ["config_instance", "logger_instance", "login_required"]
+__all__ = ["config_instance", "logger_instance", "login_required",
+           "VIDEOS_DIR", "CACHE_DIR", "ALLOWED"]

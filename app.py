@@ -27,6 +27,8 @@ from werkzeug.security import check_password_hash
 from src import logger_instance, config_instance
 from routes import all_blueprints
 from src import login_required
+from src import VIDEOS_DIR, CACHE_DIR, ALLOWED
+from src.scanner import _scan_devices
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN — cargada desde config.json
@@ -50,12 +52,8 @@ def _inject_user_context():
 for bp in all_blueprints:
     app.register_blueprint(bp)
 
-_VIDEOS_DIR = config_instance.get("storage.videos_dir", "dahua_videos")
-_CACHE_DIR  = config_instance.get("storage.cache_dir", "cache")
-_ALLOWED    = set(config_instance.get("storage.allowed_extensions", [".dav", ".mp4", ".avi", ".mkv"]))
-
-os.makedirs(_VIDEOS_DIR, exist_ok=True)
-os.makedirs(_CACHE_DIR,  exist_ok=True)
+os.makedirs(VIDEOS_DIR, exist_ok=True)
+os.makedirs(CACHE_DIR,  exist_ok=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -186,7 +184,7 @@ def get_or_create_mp4(dav_path: str) -> str:
     key  = hashlib.md5(
         f"{dav_path}:{stat.st_mtime}:{stat.st_size}".encode()
     ).hexdigest()
-    mp4_path = os.path.join(_CACHE_DIR, f"{key}.mp4")
+    mp4_path = os.path.join(CACHE_DIR, f"{key}.mp4")
 
     if not os.path.exists(mp4_path):
         tmp_path = mp4_path + ".tmp"
@@ -200,170 +198,23 @@ def get_or_create_mp4(dav_path: str) -> str:
 
     return mp4_path
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ESCANEO DE DISPOSITIVOS Y PARSEO DE NOMBRES DE ARCHIVO
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _parse_filename_datetime(filename: str) -> dict | None:
-    """
-    Extrae fecha, hora y metadatos del nombre del archivo .dav.
-
-    Formato real Dahua:
-        COLONIAL_ch1_main_20260507_000000_20260507_010000
-        → site=COLONIAL, channel=ch1, stream=main
-        → start=2026-05-07 00:00  end=2026-05-07 01:00
-
-    Retorna dict con claves datetime/date/hour/hour_label y opcionales
-    site/channel/stream/end_label, o None si no matchea ningún patrón.
-    """
-    patterns = config_instance.get("filename_patterns", {})
-    for pattern_name, pattern in patterns.items():
-        m = re.search(pattern, filename)
-        if m:
-            g = m.groupdict()
-            try:
-                dt = datetime(
-                    int(g["year"]), int(g["month"]), int(g["day"]),
-                    int(g["hour"]),
-                    int(g.get("minute", 0)),
-                    int(g.get("second", 0)),
-                )
-                result = {
-                    "datetime":     dt.isoformat(),
-                    "date":         dt.strftime("%Y-%m-%d"),
-                    "hour":         dt.hour,
-                    "hour_label":   dt.strftime("%H:%M"),
-                    "pattern_used": pattern_name,
-                }
-                # Campos opcionales presentes en dahua_site_channel
-                if g.get("site"):
-                    result["site"] = g["site"]
-                if g.get("channel"):
-                    result["channel"] = g["channel"]
-                if g.get("stream"):
-                    result["stream"] = g["stream"]
-                # Hora de fin → label "00:00 – 01:00"
-                if g.get("end_hour") is not None:
-                    try:
-                        end_dt = datetime(
-                            int(g["year"]), int(g["month"]), int(g["day"]),
-                            int(g["end_hour"]),
-                            int(g.get("end_minute", 0)),
-                            int(g.get("end_second", 0)),
-                        )
-                        result["end_label"]  = end_dt.strftime("%H:%M")
-                        result["hour_label"] = f"{dt.strftime('%H:%M')} – {end_dt.strftime('%H:%M')}"
-                    except ValueError:
-                        pass
-                return result
-            except ValueError:
-                continue
-    return None
-
-def _save_new_device(ip, alias="", location=""):
-    """Guardar nuevo dispositivo en config.json si no existe"""
-    devices = config_instance.get("devices", {})
-    if ip not in devices:
-        devices[ip] = {"alias": alias or ip, "location": location}
-        config_instance.set("devices", devices)
-        logger_instance.info("app",f"Nuevo dispositivo agregado: {ip} (alias: {alias}, location: {location})")
-
-def _is_ip_folder(name: str) -> bool:
-    parts = name.split(".")
-    if len(parts) != 4:
-        return False
-    for part in parts:
-        if not part.isdigit():
-            return False
-        value = int(part)
-        if value < 0 or value > 255:
-            return False
-    return True
-
-def _scan_devices() -> dict:
-    """
-    Escanea videos_dir buscando subcarpetas que representen dispositivos (IPs).
-    Estructura de retorno:
-    {
-      "192.168.0.33": {
-        "ip": "...", "alias": "...", "location": "...",
-        "files": [ { path, name, size, datetime, date, hour, ... }, ... ],
-        "total": N
-      }, ...
-    }
-    """
-    base    = Path(_VIDEOS_DIR)
-    devices = config_instance.get("devices", {})
-    result  = {}
-
-    if not base.exists():
-        return result
-
-    ip_dirs = [d for d in sorted(base.iterdir()) if d.is_dir() and _is_ip_folder(d.name)]
-
-    if ip_dirs:
-        scan_targets = [(d.name, d) for d in ip_dirs]
-    else:
-        scan_targets = [("local", base)]
-
-    for ip, device_dir in scan_targets:
-        if ip not in devices:
-            _save_new_device(ip)
-            devices = config_instance.get("devices", {})
-
-        device_info = devices.get(ip, {})
-        files = []
-
-        for f in sorted(device_dir.rglob("*")):
-            if not f.is_file() or f.suffix.lower() not in _ALLOWED:
-                continue
-
-            rel  = f.relative_to(base).as_posix()
-            meta = _parse_filename_datetime(f.name) or {}
-            if "channel" not in meta:
-                ch_match = re.search(r"_ch(\d+)_", f.name)
-                if ch_match:
-                    meta["channel"] = f"ch{ch_match.group(1)}"
-
-            files.append({
-                "name":            f.name,
-                "path":            rel,
-                "size":            f.stat().st_size,
-                "modified":        f.stat().st_mtime,
-                "device_ip":       ip,
-                "device_alias":    device_info.get("alias", ip),
-                "device_location": device_info.get("location", ""),
-                **meta,
-            })
-
-        result[ip] = {
-            "ip":       ip,
-            "alias":    device_info.get("alias", ip),
-            "location": device_info.get("location", ""),
-            "files":    files,
-            "total":    len(files),
-        }
-
-    return result
-
-
 def cleanup_old_videos(days: int = 7) -> dict:
     """
-    Borra archivos en _VIDEOS_DIR con antiguedad mayor a X dias.
+    Borra archivos en VIDEOS_DIR con antiguedad mayor a X dias.
     Retorna conteos de eliminados y errores.
     """
     cutoff = time.time() - (days * 86400)
     deleted = 0
     errors = 0
 
-    base = Path(_VIDEOS_DIR)
+    base = Path(VIDEOS_DIR)
     if not base.exists():
         return {"deleted": 0, "errors": 0}
 
     for f in base.rglob("*"):
         if not f.is_file():
             continue
-        if f.suffix.lower() not in _ALLOWED:
+        if f.suffix.lower() not in ALLOWED:
             continue
         try:
             if f.stat().st_mtime < cutoff:
@@ -542,7 +393,7 @@ def upload():
         }), 400
 
     safe_name = f"{int(time.time())}_{Path(f.filename).stem}{ext}"
-    save_path = os.path.join(_VIDEOS_DIR, safe_name)
+    save_path = os.path.join(VIDEOS_DIR, safe_name)
     f.save(save_path)
 
     return jsonify({
@@ -571,7 +422,7 @@ def stream_video(filepath):
     # Decodificar URL encoding si lo hay
     filepath = unquote(filepath)
     
-    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    dav_path = os.path.join(VIDEOS_DIR, filepath)
     logger_instance.info("app", f"Stream request: {filepath} -> {dav_path}")
     
     if not os.path.exists(dav_path):
@@ -613,7 +464,7 @@ def stream_video(filepath):
 @login_required
 def download_mp4(filepath):
     """Descarga directa del MP4 convertido."""
-    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    dav_path = os.path.join(VIDEOS_DIR, filepath)
     if not os.path.exists(dav_path):
         abort(404)
 
@@ -646,7 +497,7 @@ def download_mp4(filepath):
 @login_required
 def file_status(filepath):
     """Info del archivo: codec, resolución, duración, FPS."""
-    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    dav_path = os.path.join(VIDEOS_DIR, filepath)
     if not os.path.exists(dav_path):
         return jsonify({"error": "Archivo no encontrado"}), 404
 
@@ -688,9 +539,9 @@ def list_files():
     Para la vista por dispositivo usa /api/devices.
     """
     files  = []
-    base   = Path(_VIDEOS_DIR)
+    base   = Path(VIDEOS_DIR)
     for f in sorted(base.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
-        if f.is_file() and f.suffix.lower() in _ALLOWED:
+        if f.is_file() and f.suffix.lower() in ALLOWED:
             files.append({
                 "name":         f.name,
                 "size":         f.stat().st_size,
@@ -801,7 +652,7 @@ def api_config():
         "devices":           config_instance.get("devices", {}),
         "filename_patterns": list(config_instance.get("filename_patterns", {}).keys()),
         "storage": {
-            "allowed_extensions": list(_ALLOWED),
+            "allowed_extensions": list(ALLOWED),
         },
     })
 
@@ -846,84 +697,6 @@ def api_login():
 def api_logout():
     session.clear()
     return jsonify({"ok": True})
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "GET":
-        return render_template("login.html")
-
-    if request.is_json:
-        return api_login()
-
-    username = (request.form.get("username") or "").strip()
-    password = request.form.get("password") or ""
-
-    if not username or not password:
-        return render_template("login.html", error="Credenciales incompletas"), 400
-
-    if not _get_auth_users():
-        return render_template("login.html", error="Sin usuarios configurados"), 503
-
-    ip = _get_client_ip()
-    if _is_blocked(ip):
-        return render_template("login.html", error="Demasiados intentos"), 429
-
-    user = _find_auth_user(username)
-    if not user or not _verify_password(user, password):
-        _record_failed_attempt(ip)
-        return render_template("login.html", error="Usuario o contraseña inválidos"), 401
-
-    _clear_attempts(ip)
-    session["logged_in"] = True
-    session["username"] = username
-
-    return redirect(url_for("main.dashboard"))
-
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
-
-
-@app.route("/player")
-@login_required
-def player():
-    """
-    Renderiza la página del reproductor con lista de videos disponibles.
-    Los videos se obtienen recursivamente desde el directorio de videos.
-    """
-    videos = []
-    devices_data = _scan_devices()
-
-    for device in devices_data.values():
-        for f in device.get("files", []):
-            channel = f.get("channel")
-            print(f)
-            if not channel:
-                name = f.get("name") or ""
-                ch_match = re.search(r"_ch(\d+)_", name)
-                if ch_match:
-                    channel = f"ch{ch_match.group(1)}"
-            channel = channel or "ch1"
-            videos.append({
-                "id":              len(videos),
-                "filename":        f.get("name"),
-                "path":            f.get("path"),
-                "device_id":       device.get("ip", "local"),
-                "device_alias":    device.get("alias", "local"),
-                "channel_id":      channel,
-                "recording_date":  f.get("datetime"),
-                "resolution":      "1920x1080",
-                "file_size":       f.get("size"),
-                "conv_status":     "done",
-            })
-    
-    return render_template("player.html", 
-                          videos=videos, 
-                          video_count=len(videos))
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RUTAS AJAX — Configuración (Settings)
@@ -995,7 +768,7 @@ def check_video(filepath):
     """
     from urllib.parse import unquote
     filepath = unquote(filepath)
-    dav_path = os.path.join(_VIDEOS_DIR, filepath)
+    dav_path = os.path.join(VIDEOS_DIR, filepath)
     
     exists = os.path.exists(dav_path)
     is_file = os.path.isfile(dav_path) if exists else False
@@ -1111,8 +884,8 @@ if __name__ == "__main__":
 
     logger_instance.info("app", "Iniciando servidor...")
     logger_instance.info("app", f"  http://{srv.get('host','0.0.0.0')}:{srv.get('port',5000)}")
-    logger_instance.info("app", f"  Videos : {_VIDEOS_DIR}/")
-    logger_instance.info("app", f"  Caché  : {_CACHE_DIR}/")
+    logger_instance.info("app", f"  Videos : {VIDEOS_DIR}/")
+    logger_instance.info("app", f"  Caché  : {CACHE_DIR}/")
     app.run(
         debug=srv.get("debug", True),
         threaded=True,

@@ -17,16 +17,21 @@
   <span class="navbar-brand">DAHUA<span class="accent">FTP</span></span>
   <div class="navbar-links">
     <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Dashboard</a>
-    <a href="{{ url_for('settings_page') }}" class="{{ 'active' if request.endpoint == 'settings_page' }}">Configuracion</a>
+    
+    <a href="{{ url_for('settings_page') }}" class="{{ 'active' if request.endpoint == 'settings_page' }}" style="position: relative;">
+      Configuracion
+      <span id="nav-update-badge" class="update-badge" style="display: none;">1</span>
+    </a>
   </div>
   <div class="navbar-user">
     <span class="user-tag">{{ username }}</span>
-    <a href="{{ url_for('logout') }}" class="btn-logout">Salir</a>
+    <a href="{{ url_for('auth.logout') }}" class="btn-logout">Salir</a>
   </div>
 </nav>
 {% endif %}
 
 <main class="main-content">
+  <div id="update-section" style="display: none; margin-top: 20px;"></div>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
       <div class="flash flash-{{ cat }}">{{ msg }}</div>
@@ -41,6 +46,7 @@
 <script src="{{ url_for('static', filename='js/ui-components.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ajax-loader.js') }}"></script>
 <script src="{{ url_for('static', filename='js/advanced-components.js') }}"></script>
+<script src="{{ url_for('static', filename='js/update.js') }}"></script>
 
 <!-- Estilos adicionales -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/advanced-components.css') }}">

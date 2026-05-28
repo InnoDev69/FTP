@@ -6,6 +6,6 @@ def login_required(func):
     @contextlib.wraps(func)
     def wrapper(*args, **kwargs):
         if not session.get("username"):
-            return redirect(url_for("auth.login", next=request.url))
+            return redirect(url_for("login"))
         return func(*args, **kwargs)
     return wrapper
