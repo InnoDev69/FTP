@@ -11,7 +11,7 @@ def api_check_update():
     """API para verificar si hay actualizaciones disponibles"""
     has_update, commit_info = check_git_update()
     result = {
-        "update_available": True,
+        "update_available": has_update,
         "message": list(get_remote_commit_info().get("message").splitlines())
     }
     return jsonify(result)  
