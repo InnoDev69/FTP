@@ -69,12 +69,9 @@ function checkForUpdates() {
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
                                 </svg>
                                 
-                                <p style="font-size: 1.1em; color: #1F2937; margin: 0;"><strong>New version available!</strong></p>
-                                <p style="font-size: 1.2em; color: #3B82F6; font-weight: bold; margin: 5px 0 15px 0;">${newVersion}</p>
-                                
-                                <div style="font-size: 0.9em; color: #4B5563; text-align: left; background: #F3F4F6; padding: 12px; border-radius: 6px;">
+                                <div style="font-size: 0.9em; color: #ffffff; text-align: left; background: #0b121d; padding: 12px; border-radius: 6px;">
                                     <strong>Detected changes:</strong>
-                                    <ul style="margin: 5px 0 0 0; padding-left: 20px;">
+                                    <ul style="margin: 5px 0 0 0; padding-left: 0; list-style: none;">
                                         ${data.message.map(change => `<li>${change}</li>`).join('')}
                                     </ul>
                                 </div>

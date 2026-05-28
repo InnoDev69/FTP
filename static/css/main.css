@@ -673,7 +673,6 @@ body {
 
 .btn-primary {
   display: inline-block;
-  margin-top: 16px;
   padding: 10px 20px;
   background: var(--accent);
   color: #f8fafc;
