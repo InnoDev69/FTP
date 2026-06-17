@@ -23,7 +23,7 @@
     <div class="login-error" id="loginError" hidden></div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('login') }}" id="loginForm" novalidate>
+    <form method="POST" action="/login" id="loginForm" novalidate>
       <div class="form-group">
         <label for="username">Usuario FTP</label>
         <input type="text" id="username" name="username"

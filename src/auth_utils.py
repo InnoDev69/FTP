@@ -1,4 +1,4 @@
-from flask import redirect, session, url_for
+from flask import redirect, render_template, session, url_for
 import contextlib
 
 def login_required(func):
@@ -6,6 +6,6 @@ def login_required(func):
     @contextlib.wraps(func)
     def wrapper(*args, **kwargs):
         if not session.get("username"):
-            return redirect(url_for("login"))
+            return render_template("login.html")
         return func(*args, **kwargs)
     return wrapper

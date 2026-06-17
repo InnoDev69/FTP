@@ -34,8 +34,6 @@ from src import VIDEOS_DIR, CACHE_DIR, ALLOWED
 # CONFIGURACIÓN — cargada desde config.json
 # ─────────────────────────────────────────────────────────────────────────────
 
-config_instance.load_config()
-
 app = Flask(__name__)
 app.secret_key = (
     os.environ.get("SECRET_KEY")
