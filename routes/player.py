@@ -18,7 +18,6 @@ def player():
     for device in devices_data.values():
         for f in device.get("files", []):
             channel = f.get("channel")
-            print(f)
             if not channel:
                 name = f.get("name") or ""
                 ch_match = re.search(r"_ch(\d+)_", name)
