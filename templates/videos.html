@@ -9,21 +9,21 @@
 
 <!-- Filtros -->
 <div class="filters-bar">
-  <select id="f-device">
+  <select id="f-device" class="filter-select">
     <option value="">Todos los dispositivos</option>
     {% for d in filters.devices %}
     <option value="{{ d }}">{{ d }}</option>
     {% endfor %}
   </select>
 
-  <select id="f-channel">
+  <select id="f-channel" class="filter-select">
     <option value="">Todos los canales</option>
     {% for c in filters.channels %}
     <option value="{{ c }}">{{ c }}</option>
     {% endfor %}
   </select>
 
-  <select id="f-resolution">
+  <select id="f-resolution" class="filter-select">
     <option value="">Todas las resoluciones</option>
     {% for r in filters.resolutions %}
     <option value="{{ r }}">{{ r }}</option>

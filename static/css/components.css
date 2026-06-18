@@ -451,3 +451,24 @@
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* INPUT STYLES FOR ALL FORMS                                      */
+/* ═══════════════════════════════════════════════════════════════ */
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+select,
+textarea {
+    padding: 10px 12px;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.15s;
+    margin-bottom: 16px;
+}

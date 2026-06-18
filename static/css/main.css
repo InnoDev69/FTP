@@ -495,6 +495,31 @@ body {
   font-size: 12px;
 }
 
+.file-filters select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 32px 8px 12px;
+  
+  font-family: inherit;
+  font-size: 14px;
+  color: #ffffff;
+  background-color: #2a3546;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+}
+
 .file-filters button {
   cursor: pointer;
 }
